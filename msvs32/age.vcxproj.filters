@@ -1,0 +1,395 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Header Files\catalog">
+      <UniqueIdentifier>{d4bc8c05-7753-405b-b24c-f366c8ad5f57}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\executor">
+      <UniqueIdentifier>{21a289da-5a0c-41ab-974f-996d7e40da26}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\nodes">
+      <UniqueIdentifier>{a687c868-e1af-43a3-8669-582fd61fff59}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\optimizer">
+      <UniqueIdentifier>{9a2f5ffe-ac28-4ca2-b1ed-14bbbc066b26}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\parser">
+      <UniqueIdentifier>{e2c295fc-f7c7-40b9-a5fb-4b0e37fa8426}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\utils">
+      <UniqueIdentifier>{96a5c979-0fa9-4fd3-9c9d-c27a20e8d587}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\utils\load">
+      <UniqueIdentifier>{f07250c2-9e3a-496b-98c8-7bfbb0734005}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\catalog">
+      <UniqueIdentifier>{b75df054-35ba-49c5-9da1-2939d77ff37d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\commands">
+      <UniqueIdentifier>{08636822-2566-47fc-aad6-69a41c745c32}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\executor">
+      <UniqueIdentifier>{c7ae9cc4-f288-4d75-b62f-14620d42c384}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\nodes">
+      <UniqueIdentifier>{bbcda15a-c6bb-4b4d-ae92-c89cb09975a8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\optimizer">
+      <UniqueIdentifier>{2e83e13c-140c-44a5-ac5a-db90d164ef7f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\parser">
+      <UniqueIdentifier>{0dc78ce2-e0c7-4bef-9507-4fe7b3796a56}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\utils">
+      <UniqueIdentifier>{4ffc7be8-2511-48e7-83f1-4f9c21afe07a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\utils\adt">
+      <UniqueIdentifier>{2ef2addb-4f07-4c4a-b6c8-749e6245d8de}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\utils\cache">
+      <UniqueIdentifier>{9a745fc6-d60c-48be-bc14-c64fdcc44cac}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\utils\load">
+      <UniqueIdentifier>{e3ae0ba5-4cb1-4569-8ca4-ec40436818f2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\commands">
+      <UniqueIdentifier>{dab84c98-c512-4ea1-89f4-0977af85fcfd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\port">
+      <UniqueIdentifier>{f2627c14-d344-422b-bfa7-bdb2dd382fc9}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\src\include\parser\.gitignore">
+      <Filter>Header Files</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\src\include\catalog\ag_catalog.h">
+      <Filter>Header Files\catalog</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\catalog\ag_graph.h">
+      <Filter>Header Files\catalog</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\catalog\ag_label.h">
+      <Filter>Header Files\catalog</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\catalog\ag_namespace.h">
+      <Filter>Header Files\catalog</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\commands\graph_commands.h">
+      <Filter>Header Files\commands</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\commands\label_commands.h">
+      <Filter>Header Files\commands</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\executor\cypher_executor.h">
+      <Filter>Header Files\executor</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\executor\cypher_utils.h">
+      <Filter>Header Files\executor</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\nodes\ag_nodes.h">
+      <Filter>Header Files\nodes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\nodes\cypher_copyfuncs.h">
+      <Filter>Header Files\nodes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\nodes\cypher_nodes.h">
+      <Filter>Header Files\nodes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\nodes\cypher_outfuncs.h">
+      <Filter>Header Files\nodes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\nodes\cypher_readfuncs.h">
+      <Filter>Header Files\nodes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\optimizer\cypher_createplan.h">
+      <Filter>Header Files\optimizer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\optimizer\cypher_pathnode.h">
+      <Filter>Header Files\optimizer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\optimizer\cypher_paths.h">
+      <Filter>Header Files\optimizer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\parser\ag_scanner.h">
+      <Filter>Header Files\parser</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\parser\cypher_analyze.h">
+      <Filter>Header Files\parser</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\parser\cypher_clause.h">
+      <Filter>Header Files\parser</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\parser\cypher_expr.h">
+      <Filter>Header Files\parser</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\parser\cypher_gram.h">
+      <Filter>Header Files\parser</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\parser\cypher_item.h">
+      <Filter>Header Files\parser</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\parser\cypher_keywords.h">
+      <Filter>Header Files\parser</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\parser\cypher_kwlist.h">
+      <Filter>Header Files\parser</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\parser\cypher_kwlist_d.h">
+      <Filter>Header Files\parser</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\parser\cypher_parse_agg.h">
+      <Filter>Header Files\parser</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\parser\cypher_parse_node.h">
+      <Filter>Header Files\parser</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\parser\cypher_parser.h">
+      <Filter>Header Files\parser</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\parser\cypher_transform_entity.h">
+      <Filter>Header Files\parser</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\utils\ag_cache.h">
+      <Filter>Header Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\utils\ag_float8_supp.h">
+      <Filter>Header Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\utils\ag_func.h">
+      <Filter>Header Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\utils\ag_guc.h">
+      <Filter>Header Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\utils\ag_load.h">
+      <Filter>Header Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\utils\age_global_graph.h">
+      <Filter>Header Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\utils\age_graphid_ds.h">
+      <Filter>Header Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\utils\age_session_info.h">
+      <Filter>Header Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\utils\age_vle.h">
+      <Filter>Header Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\utils\agtype.h">
+      <Filter>Header Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\utils\agtype_ext.h">
+      <Filter>Header Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\utils\agtype_parser.h">
+      <Filter>Header Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\utils\agtype_raw.h">
+      <Filter>Header Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\utils\graphid.h">
+      <Filter>Header Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\utils\name_validation.h">
+      <Filter>Header Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\utils\load\ag_load_edges.h">
+      <Filter>Header Files\utils\load</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\utils\load\ag_load_labels.h">
+      <Filter>Header Files\utils\load</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\utils\load\age_load.h">
+      <Filter>Header Files\utils\load</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\utils\load\csv.h">
+      <Filter>Header Files\utils\load</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\parser\cypher_gram_def.h">
+      <Filter>Header Files\parser</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\port\win32msvc.h">
+      <Filter>Header Files\port</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\include\port\win32postgres.h">
+      <Filter>Header Files\port</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\src\backend\catalog\ag_catalog.c">
+      <Filter>Source Files\catalog</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\catalog\ag_graph.c">
+      <Filter>Source Files\catalog</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\catalog\ag_label.c">
+      <Filter>Source Files\catalog</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\catalog\ag_namespace.c">
+      <Filter>Source Files\catalog</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\commands\graph_commands.c">
+      <Filter>Source Files\commands</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\commands\label_commands.c">
+      <Filter>Source Files\commands</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\executor\cypher_create.c">
+      <Filter>Source Files\executor</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\executor\cypher_delete.c">
+      <Filter>Source Files\executor</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\executor\cypher_merge.c">
+      <Filter>Source Files\executor</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\executor\cypher_set.c">
+      <Filter>Source Files\executor</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\executor\cypher_utils.c">
+      <Filter>Source Files\executor</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\nodes\ag_nodes.c">
+      <Filter>Source Files\nodes</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\nodes\cypher_copyfuncs.c">
+      <Filter>Source Files\nodes</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\nodes\cypher_outfuncs.c">
+      <Filter>Source Files\nodes</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\nodes\cypher_readfuncs.c">
+      <Filter>Source Files\nodes</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\optimizer\cypher_createplan.c">
+      <Filter>Source Files\optimizer</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\optimizer\cypher_pathnode.c">
+      <Filter>Source Files\optimizer</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\optimizer\cypher_paths.c">
+      <Filter>Source Files\optimizer</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\parser\ag_scanner.c">
+      <Filter>Source Files\parser</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\parser\cypher_analyze.c">
+      <Filter>Source Files\parser</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\parser\cypher_clause.c">
+      <Filter>Source Files\parser</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\parser\cypher_expr.c">
+      <Filter>Source Files\parser</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\parser\cypher_item.c">
+      <Filter>Source Files\parser</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\parser\cypher_keywords.c">
+      <Filter>Source Files\parser</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\parser\cypher_parse_agg.c">
+      <Filter>Source Files\parser</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\parser\cypher_parse_node.c">
+      <Filter>Source Files\parser</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\parser\cypher_parser.c">
+      <Filter>Source Files\parser</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\parser\cypher_transform_entity.c">
+      <Filter>Source Files\parser</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\utils\ag_func.c">
+      <Filter>Source Files\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\utils\ag_guc.c">
+      <Filter>Source Files\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\utils\graph_generation.c">
+      <Filter>Source Files\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\utils\name_validation.c">
+      <Filter>Source Files\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\utils\adt\ag_float8_supp.c">
+      <Filter>Source Files\utils\adt</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\utils\adt\age_global_graph.c">
+      <Filter>Source Files\utils\adt</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\utils\adt\age_graphid_ds.c">
+      <Filter>Source Files\utils\adt</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\utils\adt\age_session_info.c">
+      <Filter>Source Files\utils\adt</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\utils\adt\age_vle.c">
+      <Filter>Source Files\utils\adt</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\utils\adt\agtype.c">
+      <Filter>Source Files\utils\adt</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\utils\adt\agtype_ext.c">
+      <Filter>Source Files\utils\adt</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\utils\adt\agtype_gin.c">
+      <Filter>Source Files\utils\adt</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\utils\adt\agtype_ops.c">
+      <Filter>Source Files\utils\adt</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\utils\adt\agtype_parser.c">
+      <Filter>Source Files\utils\adt</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\utils\adt\agtype_raw.c">
+      <Filter>Source Files\utils\adt</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\utils\adt\agtype_util.c">
+      <Filter>Source Files\utils\adt</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\utils\adt\cypher_funcs.c">
+      <Filter>Source Files\utils\adt</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\utils\adt\graphid.c">
+      <Filter>Source Files\utils\adt</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\utils\cache\ag_cache.c">
+      <Filter>Source Files\utils\cache</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\utils\load\ag_load_edges.c">
+      <Filter>Source Files\utils\load</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\utils\load\ag_load_labels.c">
+      <Filter>Source Files\utils\load</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\utils\load\age_load.c">
+      <Filter>Source Files\utils\load</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\utils\load\libcsv.c">
+      <Filter>Source Files\utils\load</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\age.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\backend\parser\cypher_gram.c">
+      <Filter>Source Files\parser</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>
