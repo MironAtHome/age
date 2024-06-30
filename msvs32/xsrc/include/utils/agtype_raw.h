@@ -127,5 +127,6 @@ static int extract_variadic_args_min(FunctionCallInfo fcinfo,
     Datum** args, Oid** types, bool** nulls,
     int min_num_args);
 static agtype_value* agtype_build_map_as_agtype_value(FunctionCallInfo fcinfo);
+static agtype_value* tostring_helper(Datum arg, Oid type, char* msghdr);
 
 #endif

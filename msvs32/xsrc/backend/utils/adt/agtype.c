@@ -45,6 +45,7 @@
 #include "parser/parse_coerce.h"
 #include "utils/builtins.h"
 #include "utils/float.h"
+#include "utils/int8.h"
 #include "utils/lsyscache.h"
 #include "utils/snapmgr.h"
 #include "utils/typcache.h"
@@ -60,7 +61,6 @@
 
 #include "port/win32msvc.h"
 
-static agtype_value *tostring_helper(Datum arg, Oid type, char *msghdr);
 
 /* global storage of  OID for agtype and _agtype */
 static Oid g_AGTYPEOID = InvalidOid;
@@ -2163,12 +2163,9 @@ PGMODULEEXPORT Datum _agtype_build_edge(PG_FUNCTION_ARGS)
     /* process graph id */
     if (fcinfo->args[0].isnull)
     {
-        PG_RETURN_NULL();
-        /*
         ereport(ERROR,
                 (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
                  errmsg("_agtype_build_edge() graphid cannot be NULL")));
-                 */
     }
 
     id = AG_GETARG_GRAPHID(0);
@@ -2207,7 +2204,7 @@ PGMODULEEXPORT Datum _agtype_build_edge(PG_FUNCTION_ARGS)
     /* if the properties object is null, push an empty object */
     if (fcinfo->args[4].isnull)
     {
-        bstate = init_agtype_build_state(0, AGT_FOBJECT);
+        agtype_build_state *bstate = init_agtype_build_state(0, AGT_FOBJECT);
         properties = build_agtype(bstate);
         pfree_agtype_build_state(bstate);
     }
@@ -2251,17 +2248,17 @@ Datum make_edge(Datum id, Datum startid, Datum endid, Datum label,
                                properties);
 }
 
-static agtype_value* jsonb_each_to_agtype_map_worker(FunctionCallInfo fcinfo)
+static agtype_value *jsonb_to_agtype_map_worker(FunctionCallInfo fcinfo)
 {
-    Jsonb* jb = NULL;
+    Jsonb *jb = NULL;
     int nargs;
     int i = 0;
     agtype_in_state result;
-    Datum* args;
-    bool* nulls;
-    Oid* types;
+    Datum *args;
+    bool *nulls;
+    Oid *types;
 
-    bool		skipNested = false;
+    bool skipNested = false;
     JsonbIterator* it;
     JsonbValue	v;
     JsonbIteratorToken r;
@@ -2371,7 +2368,7 @@ static agtype_value* jsonb_each_to_agtype_map_worker(FunctionCallInfo fcinfo)
 PG_FUNCTION_INFO_V1(jsonb_to_agtype_map);
 
 /*
- * SQL function jsonb_array_to_agtype_map(jsonb array)
+ * SQL function jsonb_to_agtype_map(jsonb object)
  */
 PGMODULEEXPORT Datum jsonb_to_agtype_map(PG_FUNCTION_ARGS)
 {
@@ -2383,7 +2380,7 @@ PGMODULEEXPORT Datum jsonb_to_agtype_map(PG_FUNCTION_ARGS)
         PG_RETURN_NULL();
     }
 
-    result = jsonb_each_to_agtype_map_worker(fcinfo);
+    result = jsonb_to_agtype_map_worker(fcinfo);
     if (result == NULL)
     {
         PG_RETURN_NULL();
@@ -3025,7 +3022,7 @@ PGMODULEEXPORT Datum agtype_to_int2(PG_FUNCTION_ARGS)
 
     PG_FREE_IF_COPY(arg_agt, 0);
 
-    PG_RETURN_INT64(result);
+    PG_RETURN_INT16(result);
 }
 
 PG_FUNCTION_INFO_V1(agtype_to_float8);
@@ -3691,14 +3688,9 @@ Datum agtype_object_field_impl(FunctionCallInfo fcinfo, agtype *agtype_in,
 
     if (AGT_ROOT_IS_SCALAR(agtype_in))
     {
-        agtype_value *process_agtv = extract_entity_properties(agtype_in,
-                                                               false);
-        if (!process_agtv)
-        {
-            PG_RETURN_NULL();
-        }
-
-        process_agtype = agtype_value_to_agtype(process_agtv);
+        process_agtype =
+            agtype_value_to_agtype(extract_entity_properties(agtype_in,
+                                                             false));
     }
     else
     {
@@ -3825,7 +3817,7 @@ PGMODULEEXPORT Datum agtype_array_element_text(PG_FUNCTION_ARGS)
     agtype *agt = AG_GET_ARG_AGTYPE_P(0);
     int elem = PG_GETARG_INT32(1);
 
-    PG_RETURN_TEXT_P((const void*)
+    PG_RETURN_TEXT_P((const void *)
 	    agtype_array_element_impl(fcinfo, agt, elem, true));
 }
 
@@ -4426,7 +4418,7 @@ PGMODULEEXPORT Datum agtype_hash_cmp(PG_FUNCTION_ARGS)
 
     if (PG_ARGISNULL(0))
     {
-        PG_RETURN_INT32(0);
+        PG_RETURN_INT16(0);
     }
 
     agt = AG_GET_ARG_AGTYPE_P(0);
@@ -4450,7 +4442,7 @@ PGMODULEEXPORT Datum agtype_hash_cmp(PG_FUNCTION_ARGS)
         seed = LEFT_ROTATE(seed, 1);
     }
 
-    PG_RETURN_INT32(hash);
+    PG_RETURN_INT16(hash);
 }
 
 // Comparison function for btree Indexes
@@ -4464,21 +4456,21 @@ PGMODULEEXPORT Datum agtype_btree_cmp(PG_FUNCTION_ARGS)
     /* this function returns INTEGER which is 32bits */
     if (PG_ARGISNULL(0) && PG_ARGISNULL(1))
     {
-        PG_RETURN_INT32(0);
+        PG_RETURN_INT16(0);
     }
     else if (PG_ARGISNULL(0))
     {
-        PG_RETURN_INT32(1);
+        PG_RETURN_INT16(1);
     }
     else if (PG_ARGISNULL(1))
     {
-        PG_RETURN_INT32(-1);
+        PG_RETURN_INT16(-1);
     }
 
     agtype_lhs = AG_GET_ARG_AGTYPE_P(0);
     agtype_rhs = AG_GET_ARG_AGTYPE_P(1);
 
-    PG_RETURN_INT32(compare_agtype_containers_orderability(&agtype_lhs->root,
+    PG_RETURN_INT16(compare_agtype_containers_orderability(&agtype_lhs->root,
                                                      &agtype_rhs->root));
 }
 
@@ -5652,10 +5644,21 @@ PGMODULEEXPORT Datum age_properties(PG_FUNCTION_ARGS)
 
     agt_arg = AG_GET_ARG_AGTYPE_P(0);
     /* check for a scalar object */
-    if (!AGT_ROOT_IS_SCALAR(agt_arg))
+
+    if (!AGT_ROOT_IS_SCALAR(agt_arg) && !AGT_ROOT_IS_OBJECT(agt_arg))
     {
         ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-                        errmsg("properties() argument must resolve to a scalar value")));
+                        errmsg("properties() argument must resolve to an object")));
+    }
+
+    /*
+     * If it isn't an array (wrapped scalar) and is an object, just return it.
+     * This is necessary for some cases where an object may be passed in. For
+     * example, SET v={blah}.
+     */
+    if (!AGT_ROOT_IS_ARRAY(agt_arg) && AGT_ROOT_IS_OBJECT(agt_arg))
+    {
+        PG_RETURN_POINTER(agt_arg);
     }
 
     /* get the object out of the array */
@@ -5775,6 +5778,10 @@ PGMODULEEXPORT Datum age_toboolean(PG_FUNCTION_ARGS)
             else
                 PG_RETURN_NULL();
         }
+        else if (type == INT2OID || type == INT4OID || type == INT8OID)
+        {
+            result = DatumGetBool(DirectFunctionCall1(int4_bool, arg));
+        }
         else
             ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
                             errmsg("toBoolean() unsupported argument type %d",
@@ -5808,6 +5815,11 @@ PGMODULEEXPORT Datum age_toboolean(PG_FUNCTION_ARGS)
                 result = false;
             else
                 PG_RETURN_NULL();
+        }
+        else if (agtv_value->type == AGTV_INTEGER)
+        {
+            result = DatumGetBool(DirectFunctionCall1(int4_bool,
+                                                      Int64GetDatum(agtv_value->val.int_value)));
         }
         else
             ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
@@ -5893,6 +5905,13 @@ PGMODULEEXPORT Datum age_tobooleanlist(PG_FUNCTION_ARGS)
             	agis_result.res = push_agtype_value(&agis_result.parse_state, WAGT_ELEM, &bool_elem);
 				break;
 
+            case AGTV_INTEGER:
+
+                bool_elem.val.boolean = DatumGetBool(DirectFunctionCall1(int4_bool,
+                                                                         Int64GetDatum(elem->val.int_value)));
+                agis_result.res = push_agtype_value(&agis_result.parse_state,
+                                                    WAGT_ELEM, &bool_elem);
+                break;
 
 			default:
 				bool_elem.type = AGTV_NULL;
@@ -5901,9 +5920,8 @@ PGMODULEEXPORT Datum age_tobooleanlist(PG_FUNCTION_ARGS)
 		}
 	}
 
-	// push the end of the array
-	agis_result.res = push_agtype_value(&agis_result.parse_state,
-	 WAGT_END_ARRAY, NULL);
+	/* push the end of the array */
+	agis_result.res = push_agtype_value(&agis_result.parse_state, WAGT_END_ARRAY, NULL);
 
 	PG_RETURN_POINTER(agtype_value_to_agtype(agis_result.res));
 }
@@ -6106,12 +6124,14 @@ PGMODULEEXPORT Datum age_tofloatlist(PG_FUNCTION_ARGS)
                 float_elem.type = AGTV_FLOAT;
                 float_elem.val.float_value = float8in_internal_null(string, NULL, "double precision",
                                             string, &is_valid); 
-                agis_result.res = push_agtype_value(&agis_result.parse_state, WAGT_ELEM, &float_elem);
+                agis_result.res = push_agtype_value(&agis_result.parse_state,
+                                                    WAGT_ELEM, &float_elem);
             }
             else 
             {
                 float_elem.type = AGTV_NULL;
-                agis_result.res = push_agtype_value(&agis_result.parse_state, WAGT_ELEM, &float_elem);
+                agis_result.res = push_agtype_value(&agis_result.parse_state,
+                                                    WAGT_ELEM, &float_elem);
             }
             
             break;
@@ -6123,19 +6143,22 @@ PGMODULEEXPORT Datum age_tofloatlist(PG_FUNCTION_ARGS)
             sprintf(buffer, "%f", float_num);
             string = buffer;
             float_elem.val.float_value = float8in_internal_null(string, NULL, "double precision", string, &is_valid);
-            agis_result.res = push_agtype_value(&agis_result.parse_state, WAGT_ELEM, &float_elem);
+            agis_result.res = push_agtype_value(&agis_result.parse_state,
+                                                WAGT_ELEM, &float_elem);
 
             break;
             
         default:
 
             float_elem.type = AGTV_NULL;
-            agis_result.res = push_agtype_value(&agis_result.parse_state, WAGT_ELEM, &float_elem);
+            agis_result.res = push_agtype_value(&agis_result.parse_state,
+                                                WAGT_ELEM, &float_elem);
 
             break;
         }
     }
-    agis_result.res = push_agtype_value(&agis_result.parse_state, WAGT_END_ARRAY, NULL);
+    agis_result.res = push_agtype_value(&agis_result.parse_state,
+                                        WAGT_END_ARRAY, NULL);
 
     PG_RETURN_POINTER(agtype_value_to_agtype(agis_result.res));
 }
