@@ -789,6 +789,7 @@ sub GenerateRegressionSqlFile
 	 'scan.sql'
    , 'graphid.sql'
    , 'agtype.sql'
+   , 'agtype_hash_cmp.sql'
    , 'catalog.sql'
    , 'cypher.sql'
    , 'expr.sql'
@@ -803,6 +804,7 @@ sub GenerateRegressionSqlFile
    , 'cypher_union.sql'
    , 'cypher_call.sql'
    , 'cypher_merge.sql'
+   , 'cypher_subquery.sql'
    , 'age_global_graph.sql'
    , 'age_load.sql'
    , 'index.sql'
@@ -810,6 +812,8 @@ sub GenerateRegressionSqlFile
    , 'graph_generation.sql'
    , 'name_validation.sql'
    , 'jsonb_operators.sql'
+   , 'list_comprehension.sql'
+   , 'map_projection.sql'
    , 'drop.sql');
 
 	my $copy_index = 0;
