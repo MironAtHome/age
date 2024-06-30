@@ -50,16 +50,16 @@
     <TargetName>$(ProjectName)</TargetName>
     <UseStructuredOutput>false</UseStructuredOutput>
     <ManagedAssembly>false</ManagedAssembly>
-    <IncludePath>C:\dev\app\pgsql14\include\server\port\win32_msvc;C:\dev\app\pgsql14\include\server\port\win32;C:\dev\app\pgsql14\include\server\port;C:\dev\app\pgsql14\include\server;C:\dev\app\pgsql14\include;C:\dev\app\pgsql14\include\server\portability;$(ProjectDir)..\src\include;$(IncludePath)</IncludePath>
+    <IncludePath>###pg_config_dir###\include\server\port\win32_msvc;###pg_config_dir###\include\server\port\win32;###pg_config_dir###\include\server\port;###pg_config_dir###\include\server;###pg_config_dir###\include;###pg_config_dir###\include\server\portability;$(ProjectDir)..\src\include;$(IncludePath)</IncludePath>
     <SourcePath>$(SourcePath)</SourcePath>
-    <LibraryPath>C:\dev\app\pgsql14\lib;$(LibraryPath)</LibraryPath>
+    <LibraryPath>###pg_config_dir###\lib;$(LibraryPath)</LibraryPath>
     <PreBuildEventUseInBuild>false</PreBuildEventUseInBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <TargetName>$(ProjectName)</TargetName>
     <UseStructuredOutput>false</UseStructuredOutput>
-    <IncludePath>C:\dev\app\pgsql14\include\server\port\win32_msvc;C:\dev\app\pgsql14\include\server\port\win32;C:\dev\app\pgsql14\include\server\port;C:\dev\app\pgsql14\include\server;C:\dev\app\pgsql14\include;C:\dev\app\pgsql14\include\server\portability;$(ProjectDir)..\src\include;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\dev\app\pgsql14\lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>###pg_config_dir###\include\server\port\win32_msvc;###pg_config_dir###\include\server\port\win32;###pg_config_dir###\include\server\port;###pg_config_dir###\include\server;###pg_config_dir###\include;###pg_config_dir###\include\server\portability;$(ProjectDir)..\src\include;$(IncludePath)</IncludePath>
+    <LibraryPath>###pg_config_dir###\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>

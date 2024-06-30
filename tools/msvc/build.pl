@@ -24,23 +24,21 @@ sub usage
 		  . "Postgres installaiton of matching version, example:\n"
 		  . "SET PG_CONFIG=C:\\dev\\app\\pgsql14\n"
 		  . "Step 2: invoke per script as per below:\n"
-	      . "build.pl [ [ <configuration> ] <component> ]\n"
+	      . "build.pl [ <configuration> ] \n"
 		  . "Options are case-insensitive.\n"
 		  . "  configuration: Release | Debug.  This sets the configuration\n"
-		  . "    to build.  Default is Release.\n"
-		  . "  component: name of component to build.  An empty value means\n"
-		  . "    to build all components.\n");
+		  . "    to build.  Default is Release.\n");
 }
 
-chdir('../..') if (-d '../msvc' && -d '../../src');
-die 'Must run from root or msvc directory'
+chdir('..') if (-d '../msvs32' && -d '../src');
+die 'Must run from root directory'
   unless (-d 'tools/msvc' && -d 'src');
 
 usage() unless scalar(@ARGV) <= 2;
 
 # buildenv.pl is for specifying the build environment settings
 # it should contain lines like:
-# $ENV{PATH} = "c:/path/to/bison/bin;$ENV{PATH}";
+# $ENV{PATH} = "c:/path/to/bison_&_flex;$ENV{PATH}";
 
 if (-e "tools/msvc/buildenv.pl")
 {
@@ -58,8 +56,8 @@ my $pg_config;
 # check what sort of build we are doing
    $pg_config = $ENV{PG_CONFIG} || (print("Please, specify postgres installation folder.\n") && usage());
 my $bconf     = $ENV{CONFIG}    || "Release";
-my $msbflags  = $ENV{MSBFLAGS}  || "";
-my $buildwhat = $ARGV[1]        || "";
+my $msbflags  = "";
+my $buildwhat = "age";
 
 if (defined($ARGV[0]))
 {
@@ -73,17 +71,13 @@ if (defined($ARGV[0]))
 	}
 	else
 	{
-		$buildwhat = $ARGV[0] || "";
+		die 'Pleae specify release or debug configuration'
 	}
 }
 
-my $vcver = Mkvcbuild::mkvcbuild($pg_config);
-
 my $work_dir = cwd();
 
-chdir('..') if (-d '../msvs32');
-
-$work_dir = cwd();
+my $vcver = Mkvcbuild::mkvcbuild($pg_config, $work_dir);
 
 print("Current dir: $work_dir");
 
