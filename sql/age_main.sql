@@ -116,6 +116,11 @@ CREATE FUNCTION ag_catalog.alter_graph(graph_name name, operation cstring,
     LANGUAGE c
     AS 'MODULE_PATHNAME';
 
+CREATE FUNCTION ag_catalog.age_graph_exists(graph_name name)
+    RETURNS boolean
+    LANGUAGE c
+    AS 'MODULE_PATHNAME';
+
 CREATE FUNCTION ag_catalog.drop_label(graph_name name, label_name name,
                                       force boolean = false)
     RETURNS void

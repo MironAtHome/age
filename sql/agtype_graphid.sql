@@ -146,3 +146,10 @@ CALLED ON NULL INPUT
 PARALLEL SAFE
 AS 'MODULE_PATHNAME', 'agtype_build_list_noargs';
 
+CREATE FUNCTION ag_catalog.jsonb_to_agtype_map(jsonb)
+    RETURNS agtype
+    LANGUAGE c
+    IMMUTABLE
+CALLED ON NULL INPUT
+PARALLEL SAFE
+AS 'MODULE_PATHNAME';
