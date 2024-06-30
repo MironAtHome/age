@@ -34,6 +34,7 @@
 #include "lib/stringinfo.h"
 #include "utils/array.h"
 #include "utils/numeric.h"
+#include "utils/tuplesort.h"
 
 #include "utils/graphid.h"
 
@@ -475,8 +476,8 @@ agtype_iterator_token agtype_iterator_next(agtype_iterator **it,
                                            agtype_value *val,
                                            bool skip_nested);
 agtype *agtype_value_to_agtype(agtype_value *val);
-bool agtype_deep_contains(agtype_iterator **val,
-                          agtype_iterator **m_contained);
+bool agtype_deep_contains(agtype_iterator** val,
+    agtype_iterator** m_contained, bool skip_nested);
 void agtype_hash_scalar_value(const agtype_value *scalar_val, uint32 *hash);
 void agtype_hash_scalar_value_extended(const agtype_value *scalar_val,
                                        uint64 *hash, uint64 seed);
@@ -596,6 +597,7 @@ agtype_iterator *get_next_list_element(agtype_iterator *it,
 void pfree_agtype_value(agtype_value* value);
 void pfree_agtype_value_content(agtype_value* value);
 void pfree_agtype_in_state(agtype_in_state* value);
+agtype_value* agtype_value_from_cstring(char* str, int len);
 size_t check_string_length(size_t len);
 agtype_value* agtype_composite_to_agtype_value_binary(agtype* a);
 bool is_decimal_needed(char* numstr);

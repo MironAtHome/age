@@ -31,8 +31,8 @@ sub mkvcbuild
 {
 	my ($pg_config_dir, $work_dir) = @_;
 
-	chdir('../..') if (-d '../msvc' && -d '../../src');
-	die 'Must run from root or msvc directory'
+	chdir('..') if (-d '../msvs32' && -d '../src');
+	die 'Must run from root directory'
 	  unless (-d 'tools/msvc' && -d 'src');
     
 	system("perl -I .\\tools .\\tools\\gen_keywordlist.pl --extern --varname CypherKeyword --output src/include/parser src/include/parser/cypher_kwlist.h");
@@ -42,14 +42,14 @@ sub mkvcbuild
 	my $incpath;
 	my $postgreslib = "postgres.lib";
 	
-	my $vc_project = Project::read_file("msvs32\\age.vcxproj");
-	my $pg_lib_dir = join("\\", $pg_config_dir, "lib");
+	my $source_file_path = join("\\", $work_dir, "msvs32\\age.vcxproj");
+	my $vc_project = Project::read_file($source_file_path);
 	$vc_project =~ s/###pg_config_dir###/$pg_config_dir/ig;
-	$vc_project =~ s/###pg_lib_dir###/$pg_lib_dir/ig;
-	Project::write_file("msvs32\\age.vcxproj", $vc_project);
+	Project::write_file($source_file_path, $vc_project);
 
 	## Perform replacements as File
-	my $c_file_content = Project::read_file("src\\backend\\age.c");
+	$source_file_path = join("\\", $work_dir, "src\\backend\\age.c");
+	my $c_file_content = Project::read_file($source_file_path);
 
 	if (index($c_file_content, "port/win32msvc.h") ==  -1) {
         $c_file_content =~ s/[\"]postgres[\.]h[\"]/\"port\/win32postgres.h\"/ig;
@@ -59,7 +59,7 @@ sub mkvcbuild
 	    $c_file_content =~ s/void [\_]PG[\_]init[\(]void[\)]/PGMODULEEXPORT void _PG_init(void)/ig;
         $c_file_content =~ s/void [\_]PG[\_]fini[\(]void[\)]/PGMODULEEXPORT void _PG_fini(void)/ig;
 	}
-	Project::write_file("src\\backend\\age.c", $c_file_content);
+	Project::write_file($source_file_path, $c_file_content);
 
     #region src/backend/catalog
     opendir(my $dh, 'src/backend/catalog/')
@@ -556,13 +556,22 @@ foreach my $c_file (@c_files)
 
 		if ($c_file eq "label_commands.h") {
 			if (index($c_file_content, "port/win32msvc.h") == -1) {
-		        my $last_include_pos = rindex($c_file_content,"#include");
-		        my $last_include_line_end_pos = index($c_file_content,"\n", $last_include_pos) + 1;
-		        substr($c_file_content,$last_include_line_end_pos,0) = "#include \"port\/win32msvc.h\"\r\n";
+		        my $first_function_pos = rindex($c_file_content,"void create_label");
+				while (substr($c_file_content, $first_function_pos, 1) ne "\n")
+				{
+					$first_function_pos = ($first_function_pos - 1);
+				}
+				$first_function_pos = ($first_function_pos + 1);
+				if (substr($c_file_content, $first_function_pos, 1) eq "\r")
+				{
+			        $first_function_pos = ($first_function_pos + 1);
+				}
+		        substr($c_file_content,$first_function_pos,0) = "#include \"port\/win32postgres.h\"\r\n";
+				substr($c_file_content,$first_function_pos,0) = "#include \"port\/win32msvc.h\"\r\n";
 			}
 		}
 		if ($c_file eq "label_commands.h") {
-			if (index($c_file_content, "PGMODULEEXPORT Datum graphid_in(PG_FUNCTION_ARGS)") == -1) {
+			if (index($c_file_content, "PGMODULEEXPORT Datum create_vlabel(PG_FUNCTION_ARGS)") == -1) {
 		        $c_file_content =~ s/Datum create\_vlabel\(PG\_FUNCTION\_ARGS\)/PGMODULEEXPORT Datum create_vlabel(PG_FUNCTION_ARGS)/g;
 				$c_file_content =~ s/Datum create\_elabel\(PG\_FUNCTION\_ARGS\)/PGMODULEEXPORT Datum create_elabel(PG_FUNCTION_ARGS)/g;
 			}
