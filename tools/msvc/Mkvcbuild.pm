@@ -775,11 +775,6 @@ foreach my $c_file (@c_files)
     		}			    
     	}
     }
-
-	### run actual build
-	chdir('msvs32') if (-d 'msvs32' && -d 'src');
-    `MSBuild age.vcxproj /verbosity:normal /property:Platform=x64 /p:Configuration=Debug`;
-	
 }
 
 #####################

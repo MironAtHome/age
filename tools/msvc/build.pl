@@ -79,8 +79,6 @@ my $work_dir = cwd();
 
 my $vcver = Mkvcbuild::mkvcbuild($pg_config, $work_dir);
 
-print("Current dir: $work_dir\n");
-
 Mkvcbuild::GenerateRegressionSqlFile('age--1.5.0.regress.sql', $work_dir);
 
 Mkvcbuild::GenerateInstallSqlFile('age--1.5.0.sql', $work_dir);
