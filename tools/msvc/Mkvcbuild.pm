@@ -50,6 +50,7 @@ sub mkvcbuild
 	## Perform replacements as File
 	$source_file_path = join("\\", $work_dir, "src\\backend\\age.c");
 	my $c_file_content = Project::read_file($source_file_path);
+	my $file_modified = 0;
 
 	if (index($c_file_content, "port/win32msvc.h") ==  -1) {
         $c_file_content =~ s/[\"]postgres[\.]h[\"]/\"port\/win32postgres.h\"/ig;
@@ -102,35 +103,44 @@ sub mkvcbuild
 	closedir $dh;
 	foreach my $c_file (@c_files)
 	{
-		$c_file_content = Project::read_file(
-		    "src/backend/commands/$c_file");
-
-		if (($c_file eq "graph_commands.c")
-		   || ($c_file eq "label_commands.c")
-		)
+	
+        $c_file_content = Project::read_file(
+            "src/backend/commands/$c_file");
+		
+		$file_modified = 0;
+		
+		if ($c_file eq "label_commands.c")
 		{
 			if (index($c_file_content, "port/win32postgres.h") ==  -1) {
                 $c_file_content =~ s/[\"]postgres[\.]h[\"]/\"port\/win32postgres.h\"/ig;
 		        my $last_include_pos = rindex($c_file_content,"#include");
-		        my $last_include_line_end_pos = index($c_file_content,"\n", $last_include_pos) + 1;		        substr($c_file_content,$last_include_line_end_pos,0) = "#include \"port\/win32msvc.h\"\r\n";
+		        my $last_include_line_end_pos = index($c_file_content,"\n", $last_include_pos) + 1;
+				substr($c_file_content,$last_include_line_end_pos,0) = "#include \"port\/win32msvc.h\"\r\n";
+				$file_modified = 1;
 			}
-		}
-		if ($c_file eq "label_commands.c"){
 			if (index($c_file_content, "PGMODULEEXPORT Datum create_vlabel(PG_FUNCTION_ARGS)") ==  -1) {
                 $c_file_content =~ s/Datum create\_vlabel\(PG_FUNCTION_ARGS\)/PGMODULEEXPORT Datum create_vlabel(PG_FUNCTION_ARGS)/ig;
 			    $c_file_content =~ s/Datum create\_elabel\(PG_FUNCTION_ARGS\)/PGMODULEEXPORT Datum create_elabel(PG_FUNCTION_ARGS)/ig;
 			    $c_file_content =~ s/Datum drop\_label\(PG_FUNCTION_ARGS\)/PGMODULEEXPORT Datum drop_label(PG_FUNCTION_ARGS)/ig;
+				$file_modified = 1;
 			}
+			if (index($c_file_content, "PGMODULEEXPORT Datum age_is_valid_label_name(PG_FUNCTION_ARGS)") ==  -1) {
+                $c_file_content =~ s/Datum age\_is\_valid\_label\_name\(PG_FUNCTION_ARGS\)/PGMODULEEXPORT Datum age_is_valid_label_name(PG_FUNCTION_ARGS)/ig;
+				$file_modified = 1;
+			}			
 		}
-		if ($c_file eq "graph_commands.c"){
-			if (index($c_file_content, "PGMODULEEXPORT Datum create_graph(PG_FUNCTION_ARGS)") ==  -1) {
-                $c_file_content =~ s/Datum create\_graph\(PG\_FUNCTION\_ARGS\)/PGMODULEEXPORT Datum create_graph(PG_FUNCTION_ARGS)/ig;
-			    $c_file_content =~ s/Datum drop\_graph\(PG\_FUNCTION\_ARGS\)/PGMODULEEXPORT Datum drop_graph(PG_FUNCTION_ARGS)/ig;
-			    $c_file_content =~ s/Datum alter\_graph\(PG\_FUNCTION\_ARGS\)/PGMODULEEXPORT Datum alter_graph(PG_FUNCTION_ARGS)/ig;
+
+		if ($c_file eq "graph_commands.c") {
+		    if(index($c_file_content, "PGMODULEEXPORT Datum age_graph_exists(PG_FUNCTION_ARGS)") ==  -1) {
+                $c_file_content = Project::read_file("msvs32/xsrc/backend/commands/$c_file");
+                $file_modified = 1;
 			}
-		}
-	    Project::write_file("src/backend/commands/$c_file"
-            , $c_file_content);
+        }
+
+        if($file_modified) {
+            Project::write_file("src/backend/commands/$c_file"
+                , $c_file_content);
+        }
     }
 	#endregion src/backend/commands
 
