@@ -110,7 +110,7 @@ PGMODULEEXPORT Datum create_graph(PG_FUNCTION_ARGS)
             (errmsg("graph \"%s\" has been created", NameStr(*graph_name))));
 
     /* according to postgres specification of c-language functions if function returns void this is the syntax */
-    PG_RETURN_VOID(); 
+    PG_RETURN_VOID();
 }
 
 PG_FUNCTION_INFO_V1(age_graph_exists);
@@ -136,7 +136,7 @@ PGMODULEEXPORT Datum age_graph_exists(PG_FUNCTION_ARGS)
         ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
             errmsg("graph name \"%s\" is invalid", graph_name_str)));
     }
-	
+
     if (graph_exists(graph_name_str))
     {
         PG_RETURN_BOOL(true);
