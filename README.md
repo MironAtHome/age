@@ -137,7 +137,7 @@ You will need to install an AGE compatible version of Postgres<a>, for now AGE s
 &nbsp;Installation via Package Manager
 </h4>
 
-You can use a <a href="https://www.postgresql.org/download/">package management </a> that your OS provides to download AGE.
+You can use a <a href="https://www.postgresql.org/download/">package management </a> that your OS provides to download PostgreSQL.
 
 <br>
 
@@ -329,9 +329,7 @@ Starting with Apache AGE is very simple. You can easily select your platform and
 <h4>Community-driven Driver</h4>
 
 - [Apache AGE Rust Driver](https://github.com/Dzordzu/rust-apache-age.git)
-
-
-
+- [Apache AGE .NET Driver](https://github.com/Allison-E/pg-age)
 
 <h2><img height="20" src="/img/contributing.svg">&nbsp;&nbsp;Community</h2>
 
