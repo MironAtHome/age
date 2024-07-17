@@ -129,13 +129,20 @@ Datum age_graph_exists(PG_FUNCTION_ARGS)
     graph_name = PG_GETARG_NAME(0);
     graph_name_str = NameStr(*graph_name);
 
+    /*checking if the name of the graph falls under the pre-decided graph naming conventions(regex) */
+    if (!is_valid_graph_name(graph_name_str))
+    {
+        ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+            errmsg("graph name \"%s\" is invalid", graph_name_str)));
+    }
+	
     if (graph_exists(graph_name_str))
     {
-        return boolean_to_agtype(true);
+        PG_RETURN_BOOL(true);
     }
     else
     {
-        return boolean_to_agtype(false);
+        PG_RETURN_BOOL(false);
     }
 }
 
