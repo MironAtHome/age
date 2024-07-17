@@ -113,6 +113,33 @@ PGMODULEEXPORT Datum create_graph(PG_FUNCTION_ARGS)
     PG_RETURN_VOID(); 
 }
 
+PG_FUNCTION_INFO_V1(age_graph_exists);
+
+PGMODULEEXPORT Datum age_graph_exists(PG_FUNCTION_ARGS)
+{
+    Name graph_name;
+    char *graph_name_str;
+
+    /* if no argument is passed with the function, graph name cannot be null */
+    if (PG_ARGISNULL(0))
+    {
+        ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+                        errmsg("graph name can not be NULL")));
+    }
+
+    graph_name = PG_GETARG_NAME(0);
+    graph_name_str = NameStr(*graph_name);
+
+    if (graph_exists(graph_name_str))
+    {
+        return PG_RETURN_BOOL(true);
+    }
+    else
+    {
+        return PG_RETURN_BOOL(false);
+    }
+}
+
 static Oid create_schema_for_graph(const Name graph_name)
 {
     char *graph_name_str = NameStr(*graph_name);
@@ -406,38 +433,4 @@ void drop_graphs(List *graphnames)
         DirectFunctionCall2(
             drop_graph, CStringGetDatum(graphname), BoolGetDatum(true));
     }
-}
-
-PG_FUNCTION_INFO_V1(age_graph_exists);
-
-/*
- * Function age_graph_exists, invoked by the sql function -
- * age_graph_exists(graph_name name)
- * NOTE: graph_name is case sensitive.
- */
-PGMODULEEXPORT Datum age_graph_exists(PG_FUNCTION_ARGS)
-{
-    Name graph_name;
-    char *graph_name_str;
-    bool result = false;
-
-    if (PG_ARGISNULL(0))
-    {
-        ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-            errmsg("graph_name must not be NULL")));
-    }
-
-    graph_name = PG_GETARG_NAME(0);
-    graph_name_str = NameStr(*graph_name);
-
-    /*checking if the name of the graph falls under the pre-decided graph naming conventions(regex) */
-    if (!is_valid_graph_name(graph_name_str))
-    {
-        ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-            errmsg("graph name \"%s\" is invalid", graph_name_str)));
-    }
-
-    result = graph_exists(graph_name_str);
-
-    PG_RETURN_BOOL(result);
 }

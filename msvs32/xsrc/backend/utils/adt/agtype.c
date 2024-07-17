@@ -61,6 +61,7 @@
 
 #include "port/win32msvc.h"
 
+static agtype_value *tostring_helper(Datum arg, Oid type, char *msghdr);
 
 /* global storage of  OID for agtype and _agtype */
 static Oid g_AGTYPEOID = InvalidOid;
@@ -1816,7 +1817,7 @@ agtype_value *string_to_agtype_value(char *s)
     return agtv;
 }
 
-agtype_value* datum_varchar_to_agtype_value(Datum dat)
+agtype_value *datum_varchar_to_agtype_value(Datum dat)
 {
     VarChar *varchar_value = DatumGetVarCharPP(dat);
     agtype_value* agtv = palloc0(sizeof(agtype_value));
@@ -2089,12 +2090,9 @@ PGMODULEEXPORT Datum _agtype_build_vertex(PG_FUNCTION_ARGS)
     /* handles null */
     if (fcinfo->args[0].isnull)
     {
-        /*
         ereport(ERROR,
                 (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
                  errmsg("_agtype_build_vertex() graphid cannot be NULL")));
-                 */
-        PG_RETURN_NULL();
     }
 
     if (fcinfo->args[1].isnull)
@@ -2246,6 +2244,144 @@ Datum make_edge(Datum id, Datum startid, Datum endid, Datum label,
 {
     return DirectFunctionCall5(_agtype_build_edge, id, startid, endid, label,
                                properties);
+}
+
+static void datum_to_agtype_map_worker(FunctionCallInfo fcinfo, agtype_in_state *result)
+{
+    int nargs = 0;
+    int i = 0;
+    agt_type_category tcategory;
+    Oid outfuncoid;
+    Datum *args;
+    bool* nulls;
+    Oid* types;
+
+    HeapTupleHeader td;
+    Oid tup_type;
+    int32 tup_typmod;
+    TupleDesc tupdesc;
+    HeapTupleData tmptup, * tuple;
+
+    check_stack_depth();
+
+    /* build argument values to build the object */
+    nargs = extract_variadic_args(fcinfo, 0, true, &args, &types, &nulls);
+
+    if (true == nulls[0])
+    {
+        ereport(
+            ERROR,
+            (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+                errmsg("row_to_agtype_map_worker does not allow null input parameter")));
+    }
+
+    if (nargs != 1)
+    {
+        ereport(
+            ERROR,
+            (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+                errmsg("row_to_agtype_map_worker allows only one parameter of type Datum")));
+    }
+
+    if (types[0] == InvalidOid)
+    {
+        ereport(ERROR,
+            (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+                errmsg("row_to_agtype_map_worker could not determine input data type")));
+    }
+
+    agtype_categorize_type(types[0], &tcategory, &outfuncoid);
+
+    if (!(AGT_TYPE_COMPOSITE == tcategory))
+    {
+        ereport(ERROR,
+            (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+                errmsg("row_to_agtype_map_worker accepts only single row as input parameter")));
+    }
+
+    td = DatumGetHeapTupleHeader(args[0]);
+
+    /* Extract rowtype info and find a tupdesc */
+    tup_type = HeapTupleHeaderGetTypeId(td);
+    tup_typmod = HeapTupleHeaderGetTypMod(td);
+    tupdesc = lookup_rowtype_tupdesc(tup_type, tup_typmod);
+
+    /* Build a temporary HeapTuple control structure */
+    tmptup.t_len = HeapTupleHeaderGetDatumLength(td);
+    tmptup.t_data = td;
+    tuple = &tmptup;
+
+    memset(result, 0, sizeof(agtype_in_state));
+
+    result->res = push_agtype_value(&result->parse_state, WAGT_BEGIN_OBJECT,
+        NULL);
+
+    for (i = 0; i < tupdesc->natts; i++)
+    {
+        Datum val;
+        bool isnull;
+        char* attname;
+        agt_type_category tcategory;
+        Oid outfuncoid;
+        agtype_value v;
+        Form_pg_attribute att = TupleDescAttr(tupdesc, i);
+
+        if (att->attisdropped)
+            continue;
+
+        attname = NameStr(att->attname);
+
+        v.type = AGTV_STRING;
+        /*
+         * don't need check_string_length here
+         * - can't exceed maximum name length
+         */
+        v.val.string.len = strlen(attname);
+        v.val.string.val = attname;
+
+        result->res = push_agtype_value(&result->parse_state, WAGT_KEY, &v);
+
+        val = heap_getattr(tuple, i + 1, tupdesc, &isnull);
+
+        if (isnull)
+        {
+            tcategory = AGT_TYPE_NULL;
+            outfuncoid = InvalidOid;
+        }
+        else
+        {
+            agtype_categorize_type(att->atttypid, &tcategory, &outfuncoid);
+        }
+
+        datum_to_agtype(val, isnull, result, tcategory, outfuncoid, false);
+    }
+
+    result->res = push_agtype_value(&result->parse_state, WAGT_END_OBJECT,
+        NULL);
+
+    ReleaseTupleDesc(tupdesc);
+
+    return;
+}
+
+PG_FUNCTION_INFO_V1(datum_to_agtype_map);
+
+/*
+ * SQL function datum_to_agtype_map(composite row)
+ */
+PGMODULEEXPORT Datum datum_to_agtype_map(PG_FUNCTION_ARGS)
+{
+    agtype_in_state result;
+
+    /* check for null argument */
+    if (fcinfo->args[0].isnull)
+    {
+        PG_RETURN_NULL();
+    }
+
+    datum_to_agtype_map_worker(fcinfo, &result);
+
+    PG_RETURN_POINTER(agtype_value_to_agtype(result.res));
 }
 
 static agtype_value *jsonb_to_agtype_map_worker(FunctionCallInfo fcinfo)
@@ -2412,7 +2548,7 @@ static agtype_value *agtype_build_map_as_agtype_value(FunctionCallInfo fcinfo)
             ERROR,
             (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
              errmsg("argument list must have been even number of elements"),
-             errhint("The arguments of agtype_build_map() must consist of alternating keys and values.")));
+             errhint("The arguments of agtype_build_map_as_agtype_value() must consist of alternating keys and values.")));
     }
 
     memset(&result, 0, sizeof(agtype_in_state));
@@ -5643,7 +5779,7 @@ PGMODULEEXPORT Datum age_properties(PG_FUNCTION_ARGS)
     }
 
     agt_arg = AG_GET_ARG_AGTYPE_P(0);
-    /* check for a scalar object */
+    /* check for a scalar or regular object */
 
     if (!AGT_ROOT_IS_SCALAR(agt_arg) && !AGT_ROOT_IS_OBJECT(agt_arg))
     {
@@ -5754,8 +5890,8 @@ PGMODULEEXPORT Datum age_toboolean(PG_FUNCTION_ARGS)
 	}
 
     /*
-     * toBoolean() supports bool, text, cstring, or the agtype bool, and string
-     * input.
+     * toBoolean() supports bool, text, cstring, integer or the agtype bool,
+     * string and integer input.
      */
     arg = args[0];
     type = types[0];
@@ -5849,30 +5985,30 @@ PGMODULEEXPORT Datum age_tobooleanlist(PG_FUNCTION_ARGS)
     int count;
     int i;
 
-	// check for null
+	/* check for null */
     if (PG_ARGISNULL(0))
         PG_RETURN_NULL();
 
     agt_arg = AG_GET_ARG_AGTYPE_P(0);
-    // check for an array
+    /* check for an array */
     if (!AGT_ROOT_IS_ARRAY(agt_arg) || AGT_ROOT_IS_SCALAR(agt_arg))
 		ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
 					errmsg("toBooleanList() argument must resolve to a list or null")));
 
     count = AGT_ROOT_COUNT(agt_arg);
 
-    // if we have an empty list or only one element in the list, return null
+    /* if we have an empty list or only one element in the list, return null */
     if (count == 0)
 		PG_RETURN_NULL();
 
-    // clear the result structure 
+    /* clear the result structure  */
     MemSet(&agis_result, 0, sizeof(agtype_in_state));
 
-    // push the beginning of the array 
+    /* push the beginning of the array  */
     agis_result.res = push_agtype_value(&agis_result.parse_state,
 		WAGT_BEGIN_ARRAY, NULL);
 
-	// iterate through the list
+	/* iterate through the list */
 	for (i = 0; i < count; i++)
 	{
 		elem = get_ith_agtype_value_from_container(&agt_arg->root, i);
@@ -6110,7 +6246,7 @@ PGMODULEEXPORT Datum age_tofloatlist(PG_FUNCTION_ARGS)
     /* iterate through the list */
     for (i = 0; i < count; i++)
     {
-        // TODO: check element's type, it's value, and convert it to float if possible.
+        /* check element's type, it's value, and convert it to float if possible. */
         elem = get_ith_agtype_value_from_container(&agt_arg->root, i);
         float_elem.type = AGTV_FLOAT;
 
@@ -6609,7 +6745,7 @@ PG_FUNCTION_INFO_V1(graphid_to_agtype);
 
 PGMODULEEXPORT Datum graphid_to_agtype(PG_FUNCTION_ARGS)
 {
-    PG_RETURN_POINTER(integer_to_agtype(AG_GETARG_GRAPHID(0)));
+    PG_RETURN_POINTER((const void *) integer_to_agtype(AG_GETARG_GRAPHID(0)));
 }
 
 PG_FUNCTION_INFO_V1(agtype_to_graphid);
@@ -6785,7 +6921,7 @@ PGMODULEEXPORT Datum age_label(PG_FUNCTION_ARGS)
     /* get the argument */
     agt_arg = AG_GET_ARG_AGTYPE_P(0);
 
-    // edges and vertices are considered scalars
+    /* edges and vertices are considered scalars */
     if (!AGT_ROOT_IS_SCALAR(agt_arg))
     {
         if (AGTE_IS_NULL(agt_arg->root.children[0]))
@@ -6798,7 +6934,7 @@ PGMODULEEXPORT Datum age_label(PG_FUNCTION_ARGS)
 
     agtv_value = get_ith_agtype_value_from_container(&agt_arg->root, 0);
 
-    // fail if agtype value isn't an edge or vertex
+    /* fail if agtype value isn't an edge or vertex */
     if (agtv_value->type != AGTV_VERTEX && agtv_value->type != AGTV_EDGE)
     {
         ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
@@ -6869,7 +7005,7 @@ PGMODULEEXPORT Datum age_tostring(PG_FUNCTION_ARGS)
 
 /*
  * Helper function to take any valid type and convert it to an agtype string.
- * Returns NULL for NULL output.
+ * Returns NULL for NULL input.
  */
 static agtype_value *tostring_helper(Datum arg, Oid type, char *msghdr)
 {
@@ -11144,7 +11280,7 @@ PGMODULEEXPORT Datum age_keys(PG_FUNCTION_ARGS)
         PG_RETURN_NULL();
     }
 
-    //needs to be a map, node, or relationship
+    /* needs to be a map, node, or relationship */
     agt_arg = AG_GET_ARG_AGTYPE_P(0);
 
     /*
@@ -11606,7 +11742,8 @@ PGMODULEEXPORT Datum age_unnest(PG_FUNCTION_ARGS)
                 (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
                         errmsg("invalid unnest boolean flags passed")));
     }
-    // check for null
+
+    /* check for a NULL expr */
     if (PG_ARGISNULL(0))
     {
         PG_RETURN_NULL();
