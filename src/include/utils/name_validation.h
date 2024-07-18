@@ -39,6 +39,6 @@
 #define MIN_LABEL_NAME_LEN 1
 
 int is_valid_graph_name(const char *graph_name);
-int is_valid_label(char *label_name, char label_type);
+bool is_valid_label_name(const char *label_name);
 
 #endif

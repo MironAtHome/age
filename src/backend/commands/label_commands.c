@@ -54,45 +54,47 @@
 #include "utils/graphid.h"
 #include "utils/name_validation.h"
 
-/*
- * Relation name doesn't have to be label name but the same name is used so
- * that users can find the backed relation for a label only by its name.
- */
+ /*
+  * Relation name doesn't have to be label name but the same name is used so
+  * that users can find the backed relation for a label only by its name.
+  */
 #define gen_label_relation_name(label_name) (label_name)
 
 static void create_table_for_label(char *graph_name, char *label_name,
-                                   char *schema_name, char *rel_name,
-                                   char *seq_name, char label_type,
-                                   List *parents);
+    char *schema_name, char *rel_name,
+    char *seq_name, char label_type,
+    List *parents);
 
 /* common */
 static List *create_edge_table_elements(char *graph_name, char *label_name,
-                                        char *schema_name, char *rel_name,
-                                        char *seq_name);
+    char *schema_name, char *rel_name,
+    char *seq_name);
 static List *create_vertex_table_elements(char *graph_name, char *label_name,
-                                          char *schema_name, char *rel_name,
-                                          char *seq_name);
+    char *schema_name, char *rel_name,
+    char *seq_name);
 static void create_sequence_for_label(RangeVar *seq_range_var);
 static Constraint *build_pk_constraint(void);
 static Constraint *build_id_default(char *graph_name, char *label_name,
-                                    char *schema_name, char *seq_name);
+    char *schema_name, char *seq_name);
 static FuncCall *build_id_default_func_expr(char *graph_name, char *label_name,
-                                            char *schema_name, char *seq_name);
+    char *schema_name, char *seq_name);
 static Constraint *build_not_null_constraint(void);
 static Constraint *build_properties_default(void);
 static void alter_sequence_owned_by_for_label(RangeVar *seq_range_var,
-                                              char *rel_name);
+    char *rel_name);
 static int32 get_new_label_id(Oid graph_oid, Oid nsp_id);
 static void change_label_id_default(char *graph_name, char *label_name,
-                                    char *schema_name, char *seq_name,
-                                    Oid relid);
+    char *schema_name, char *seq_name,
+    Oid relid);
 
 /* drop */
 static void remove_relation(List *qname);
 static void range_var_callback_for_remove_relation(const RangeVar *rel,
-                                                   Oid rel_oid,
-                                                   Oid odl_rel_oid,
-                                                   void *arg);
+    Oid rel_oid,
+    Oid odl_rel_oid,
+    void *arg);
+
+static bool is_valid_label(char *label_name, char *graph_name, char label_type);
 
 PG_FUNCTION_INFO_V1(age_is_valid_label_name);
 
@@ -106,7 +108,7 @@ Datum age_is_valid_label_name(PG_FUNCTION_ARGS)
     if (PG_ARGISNULL(0))
     {
         ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-                errmsg("label name must not be NULL")));
+            errmsg("label name must not be NULL")));
     }
 
     agt_arg = AG_GET_ARG_AGTYPE_P(0);
@@ -114,8 +116,8 @@ Datum age_is_valid_label_name(PG_FUNCTION_ARGS)
     if (!AGT_ROOT_IS_SCALAR(agt_arg))
     {
         ereport(ERROR,
-                (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-                 errmsg("is_valid_label_name() only supports scalar arguments")));
+            (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+                errmsg("is_valid_label_name() only supports scalar arguments")));
     }
 
     agtv_value = get_ith_agtype_value_from_container(&agt_arg->root, 0);
@@ -123,14 +125,22 @@ Datum age_is_valid_label_name(PG_FUNCTION_ARGS)
     if (agtv_value->type != AGTV_STRING)
     {
         ereport(ERROR,
-                (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-                 errmsg("is_valid_label_name() only supports string arguments")));
+            (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+                errmsg("is_valid_label_name() only supports string arguments")));
     }
 
     label_name = pnstrdup(agtv_value->val.string.val,
-                          agtv_value->val.string.len);
+        agtv_value->val.string.len);
 
-    is_valid = is_valid_label(label_name, 0);
+    if (NULL == label_name)
+    {
+        ereport(ERROR,
+            (errcode(ERRCODE_DATA_EXCEPTION),
+                errmsg("is_valid_label_name() could not produce label name string copy")));
+    }
+
+    is_valid = is_valid_label_name(label_name);
+
     pfree(label_name);
 
     if (is_valid)
@@ -171,14 +181,14 @@ Datum create_vlabel(PG_FUNCTION_ARGS)
     if (PG_ARGISNULL(0))
     {
         ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-                errmsg("graph name must not be NULL")));
+            errmsg("graph name must not be NULL")));
     }
 
     /* checking if user has not provided the label name */
     if (PG_ARGISNULL(1))
     {
         ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-                errmsg("label name must not be NULL")));
+            errmsg("label name must not be NULL")));
     }
 
     graph_name = PG_GETARG_NAME(0);
@@ -188,21 +198,19 @@ Datum create_vlabel(PG_FUNCTION_ARGS)
     label_name_str = NameStr(*label_name);
 
     /* Check if graph does not exist */
-    if (!graph_exists(graph_name_str))
+    if (!OidIsValid(graph_oid = get_graph_oid(graph_name_str)))
     {
         ereport(ERROR,
-                (errcode(ERRCODE_UNDEFINED_SCHEMA),
-                        errmsg("graph \"%s\" does not exist.", graph_name_str)));
+            (errcode(ERRCODE_UNDEFINED_SCHEMA),
+                errmsg("graph \"%s\" does not exist", graph_name_str)));
     }
-
-    graph_oid = get_graph_oid(graph_name_str);
 
     /* Check if label with the input name already exists */
     if (label_exists(label_name_str, graph_oid))
     {
         ereport(ERROR,
-                (errcode(ERRCODE_UNDEFINED_SCHEMA),
-                        errmsg("label \"%s\" already exists", label_name_str)));
+            (errcode(ERRCODE_UNDEFINED_SCHEMA),
+                errmsg("label \"%s\" already exists", label_name_str)));
     }
 
     /* Create the default label tables */
@@ -216,7 +224,7 @@ Datum create_vlabel(PG_FUNCTION_ARGS)
     create_label(graph, label, LABEL_TYPE_VERTEX, parent);
 
     ereport(NOTICE,
-            (errmsg("VLabel \"%s\" has been created", NameStr(*label_name))));
+        (errmsg("VLabel \"%s\" has been created", NameStr(*label_name))));
 
     PG_RETURN_VOID();
 }
@@ -235,30 +243,30 @@ PG_FUNCTION_INFO_V1(create_elabel);
 
 Datum create_elabel(PG_FUNCTION_ARGS)
 {
-    char *graph;
+    char* graph;
     Name graph_name;
-    char *graph_name_str;
+    char* graph_name_str;
     Oid graph_oid;
-    List *parent;
+    List* parent;
 
-    RangeVar *rv;
+    RangeVar* rv;
 
-    char *label;
+    char* label;
     Name label_name;
-    char *label_name_str;
+    char* label_name_str;
 
     /* checking if user has not provided the graph name */
     if (PG_ARGISNULL(0))
     {
         ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-                errmsg("graph name must not be NULL")));
+            errmsg("graph name must not be NULL")));
     }
 
     /* checking if user has not provided the label name */
     if (PG_ARGISNULL(1))
     {
         ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-                errmsg("label name must not be NULL")));
+            errmsg("label name must not be NULL")));
     }
 
     graph_name = PG_GETARG_NAME(0);
@@ -271,8 +279,8 @@ Datum create_elabel(PG_FUNCTION_ARGS)
     if (!graph_exists(graph_name_str))
     {
         ereport(ERROR,
-                (errcode(ERRCODE_UNDEFINED_SCHEMA),
-                 errmsg("graph \"%s\" does not exist.", graph_name_str)));
+            (errcode(ERRCODE_UNDEFINED_SCHEMA),
+                errmsg("graph \"%s\" does not exist.", graph_name_str)));
     }
 
     graph_oid = get_graph_oid(graph_name_str);
@@ -281,8 +289,8 @@ Datum create_elabel(PG_FUNCTION_ARGS)
     if (label_exists(label_name_str, graph_oid))
     {
         ereport(ERROR,
-                (errcode(ERRCODE_UNDEFINED_SCHEMA),
-                        errmsg("label \"%s\" already exists", label_name_str)));
+            (errcode(ERRCODE_UNDEFINED_SCHEMA),
+                errmsg("label \"%s\" already exists", label_name_str)));
     }
 
     /* Create the default label tables */
@@ -295,9 +303,135 @@ Datum create_elabel(PG_FUNCTION_ARGS)
     create_label(graph, label, LABEL_TYPE_EDGE, parent);
 
     ereport(NOTICE,
-            (errmsg("ELabel \"%s\" has been created", NameStr(*label_name))));
+        (errmsg("ELabel \"%s\" has been created", NameStr(*label_name))));
 
     PG_RETURN_VOID();
+}
+
+PG_FUNCTION_INFO_V1(age_vertex_exists);
+
+Datum age_vertex_exists(PG_FUNCTION_ARGS)
+{
+    Name graph_name;
+    Name vertex_name;
+
+    char* graph_name_str;
+    char* vertex_name_str;
+
+    bool exists = false;
+
+    /* if no argument is passed with the function, graph name cannot be null */
+    if (PG_ARGISNULL(0))
+    {
+        ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+            errmsg("vertex name can not be NULL")));
+    }
+
+    graph_name = PG_GETARG_NAME(1);
+    vertex_name = PG_GETARG_NAME(0);
+
+    graph_name_str = NameStr(*graph_name);
+    vertex_name_str = NameStr(*vertex_name);
+
+    /*checking if the name of the graph falls under the pre-decided graph naming conventions(regex) */
+    if (!is_valid_graph_name(graph_name_str))
+    {
+        ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+            errmsg("graph name \"%s\" is invalid", graph_name_str)));
+    }
+
+    if (is_valid_label(vertex_name_str, graph_name_str, LABEL_KIND_VERTEX))
+    {
+        PG_RETURN_BOOL(true);
+    }
+
+    PG_RETURN_BOOL(false);
+}
+
+PG_FUNCTION_INFO_V1(age_edge_exists);
+
+Datum age_edge_exists(PG_FUNCTION_ARGS)
+{
+    Name graph_name;
+    Name edge_name;
+
+    char* graph_name_str;
+    char* edge_name_str;
+
+    bool exists = false;
+
+    /* if no argument is passed with the function, graph name cannot be null */
+    if (PG_ARGISNULL(0))
+    {
+        ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+            errmsg("vertex name can not be NULL")));
+    }
+
+    graph_name = PG_GETARG_NAME(1);
+    edge_name = PG_GETARG_NAME(0);
+
+    graph_name_str = NameStr(*graph_name);
+    edge_name_str = NameStr(*edge_name);
+
+    /*checking if the name of the graph falls under the pre-decided graph naming conventions(regex) */
+    if (!is_valid_graph_name(graph_name_str))
+    {
+        ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+            errmsg("graph name \"%s\" is invalid", graph_name_str)));
+    }
+
+    if (!is_valid_label_name(edge_name_str))
+    {
+        ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+            errmsg("edge name \"%s\" is invalid", edge_name_str)));
+    }
+
+    if (is_valid_label(edge_name_str, graph_name_str, LABEL_KIND_EDGE))
+    {
+        PG_RETURN_BOOL(true);
+    }
+    
+    PG_RETURN_BOOL(false);
+}
+
+static bool is_valid_label(char* label_name, char* graph_name, char label_type)
+{
+    Oid graph_oid;
+    label_cache_data* cache_data;
+    
+    if (!is_valid_graph_name(graph_name))
+    {
+        return false;
+    }
+
+    /* Check if graph does not exist */
+    if (!OidIsValid(graph_oid = get_graph_oid(graph_name)))
+    {
+        return false;
+    }
+
+    if (!is_valid_label_name(label_name))
+    {
+        return false;
+    }
+
+    cache_data = search_label_name_graph_cache(label_name, graph_oid);
+    if (NULL == cache_data)
+    {
+        return false;
+    }
+
+    if (!OidIsValid(cache_data->id))
+    {
+        return false;
+    }
+
+    if (cache_data->kind != label_type)
+    {
+        return false;
+    }
+
+    return true;
 }
 
 /*
@@ -305,30 +439,30 @@ Datum create_elabel(PG_FUNCTION_ARGS)
  * new table and sequence. Returns the oid from the new tuple in
  * ag_catalog.ag_label.
  */
-void create_label(char *graph_name, char *label_name, char label_type,
-                  List *parents)
+void create_label(char* graph_name, char* label_name, char label_type,
+    List* parents)
 {
-    graph_cache_data *cache_data;
+    graph_cache_data* cache_data;
     Oid graph_oid;
     Oid nsp_id;
-    char *schema_name;
-    char *rel_name;
-    char *seq_name;
-    RangeVar *seq_range_var;
+    char* schema_name;
+    char* rel_name;
+    char* seq_name;
+    RangeVar* seq_range_var;
     int32 label_id;
     Oid relation_id;
 
-    if (!is_valid_label(label_name, label_type))
+    if (!is_valid_label_name(label_name))
     {
         ereport(ERROR, (errcode(ERRCODE_UNDEFINED_SCHEMA),
-                        errmsg("label name is invalid")));
+            errmsg("label name is invalid")));
     }
 
     cache_data = search_graph_name_cache(graph_name);
     if (!cache_data)
     {
         ereport(ERROR, (errcode(ERRCODE_UNDEFINED_SCHEMA),
-                        errmsg("graph \"%s\" does not exist", graph_name)));
+            errmsg("graph \"%s\" does not exist", graph_name)));
     }
     graph_oid = cache_data->oid;
     nsp_id = cache_data->namespace;
@@ -342,7 +476,7 @@ void create_label(char *graph_name, char *label_name, char label_type,
 
     /* create a table for the new label */
     create_table_for_label(graph_name, label_name, schema_name, rel_name,
-                           seq_name, label_type, parents);
+        seq_name, label_type, parents);
 
     /* record the new label in ag_label */
     relation_id = get_relname_relid(rel_name, nsp_id);
@@ -350,7 +484,7 @@ void create_label(char *graph_name, char *label_name, char label_type,
     /* If a label has parents, switch the parents id default, with its own. */
     if (list_length(parents) != 0)
         change_label_id_default(graph_name, label_name, schema_name, seq_name,
-                                relation_id);
+            relation_id);
 
     /* associate the sequence with the "id" column */
     alter_sequence_owned_by_for_label(seq_range_var, rel_name);
@@ -359,12 +493,12 @@ void create_label(char *graph_name, char *label_name, char label_type,
     label_id = get_new_label_id(graph_oid, nsp_id);
 
     insert_label(label_name, graph_oid, label_id, label_type,
-                 relation_id, seq_name);
+        relation_id, seq_name);
 
     CommandCounterIncrement();
 }
 
-/* 
+/*
  * CREATE TABLE `schema_name`.`rel_name` (
  * "id" graphid PRIMARY KEY DEFAULT "ag_catalog"."_graphid"(...),
  * "start_id" graphid NOT NULL note: only for edge labels
@@ -372,13 +506,13 @@ void create_label(char *graph_name, char *label_name, char label_type,
  * "properties" agtype NOT NULL DEFAULT "ag_catalog"."agtype_build_map"()
  * )
  */
-static void create_table_for_label(char *graph_name, char *label_name,
-                                   char *schema_name, char *rel_name,
-                                   char *seq_name, char label_type,
-                                   List *parents)
+static void create_table_for_label(char* graph_name, char* label_name,
+    char* schema_name, char* rel_name,
+    char* seq_name, char label_type,
+    List* parents)
 {
-    CreateStmt *create_stmt;
-    PlannedStmt *wrapper;
+    CreateStmt* create_stmt;
+    PlannedStmt* wrapper;
 
     create_stmt = makeNode(CreateStmt);
 
@@ -400,7 +534,7 @@ static void create_table_for_label(char *graph_name, char *label_name,
             graph_name, label_name, schema_name, rel_name, seq_name);
     else
         ereport(ERROR, (errcode(ERRCODE_INTERNAL_ERROR),
-                        errmsg("undefined label type \'%c\'", label_type)));
+            errmsg("undefined label type \'%c\'", label_type)));
 
     create_stmt->inhRelations = parents;
     create_stmt->partbound = NULL;
@@ -419,12 +553,12 @@ static void create_table_for_label(char *graph_name, char *label_name,
     wrapper->stmt_len = 0;
 
     ProcessUtility(wrapper, "(generated CREATE TABLE command)", false,
-                   PROCESS_UTILITY_SUBCOMMAND, NULL, NULL, None_Receiver,
-                   NULL);
+        PROCESS_UTILITY_SUBCOMMAND, NULL, NULL, None_Receiver,
+        NULL);
     /* CommandCounterIncrement() is called in ProcessUtility() */
 }
 
-/* 
+/*
  * CREATE TABLE `schema_name`.`rel_name` (
  * "id" graphid PRIMARY KEY DEFAULT "ag_catalog"."_graphid"(...),
  * "start_id" graphid NOT NULL
@@ -432,24 +566,24 @@ static void create_table_for_label(char *graph_name, char *label_name,
  * "properties" agtype NOT NULL DEFAULT "ag_catalog"."agtype_build_map"()
  * )
  */
-static List *create_edge_table_elements(char *graph_name, char *label_name,
-                                        char *schema_name, char *rel_name,
-                                        char *seq_name)
+static List* create_edge_table_elements(char* graph_name, char* label_name,
+    char* schema_name, char* rel_name,
+    char* seq_name)
 {
-    ColumnDef *id;
-    ColumnDef *start_id;
-    ColumnDef *end_id;
-    ColumnDef *props;
+    ColumnDef* id;
+    ColumnDef* start_id;
+    ColumnDef* end_id;
+    ColumnDef* props;
 
     /* "id" graphid PRIMARY KEY DEFAULT "ag_catalog"."_graphid"(...) */
     id = makeColumnDef(AG_EDGE_COLNAME_ID, GRAPHIDOID, -1, InvalidOid);
     id->constraints = list_make2(build_pk_constraint(),
-                                 build_id_default(graph_name, label_name,
-                                                  schema_name, seq_name));
+        build_id_default(graph_name, label_name,
+            schema_name, seq_name));
 
     /* "start_id" graphid NOT NULL */
     start_id = makeColumnDef(AG_EDGE_COLNAME_START_ID, GRAPHIDOID, -1,
-                             InvalidOid);
+        InvalidOid);
     start_id->constraints = list_make1(build_not_null_constraint());
 
     /* "end_id" graphid NOT NULL */
@@ -458,49 +592,49 @@ static List *create_edge_table_elements(char *graph_name, char *label_name,
 
     /* "properties" agtype NOT NULL DEFAULT "ag_catalog"."agtype_build_map"() */
     props = makeColumnDef(AG_EDGE_COLNAME_PROPERTIES, AGTYPEOID, -1,
-                          InvalidOid);
+        InvalidOid);
     props->constraints = list_make2(build_not_null_constraint(),
-                                    build_properties_default());
+        build_properties_default());
 
     return list_make4(id, start_id, end_id, props);
 }
 
-/* 
+/*
  * CREATE TABLE `schema_name`.`rel_name` (
  * "id" graphid PRIMARY KEY DEFAULT "ag_catalog"."_graphid"(...),
  * "properties" agtype NOT NULL DEFAULT "ag_catalog"."agtype_build_map"()
  * )
  */
-static List *create_vertex_table_elements(char *graph_name, char *label_name,
-                                          char *schema_name, char *rel_name,
-                                          char *seq_name)
+static List* create_vertex_table_elements(char* graph_name, char* label_name,
+    char* schema_name, char* rel_name,
+    char* seq_name)
 {
-    ColumnDef *id;
-    ColumnDef *props;
+    ColumnDef* id;
+    ColumnDef* props;
 
     /* "id" graphid PRIMARY KEY DEFAULT "ag_catalog"."_graphid"(...) */
     id = makeColumnDef(AG_VERTEX_COLNAME_ID, GRAPHIDOID, -1, InvalidOid);
     id->constraints = list_make2(build_pk_constraint(),
-                                 build_id_default(graph_name, label_name,
-                                                  schema_name, seq_name));
+        build_id_default(graph_name, label_name,
+            schema_name, seq_name));
 
     /* "properties" agtype NOT NULL DEFAULT "ag_catalog"."agtype_build_map"() */
     props = makeColumnDef(AG_VERTEX_COLNAME_PROPERTIES, AGTYPEOID, -1,
-                          InvalidOid);
+        InvalidOid);
     props->constraints = list_make2(build_not_null_constraint(),
-                                    build_properties_default());
+        build_properties_default());
 
     return list_make2(id, props);
 }
 
 /* CREATE SEQUENCE `seq_range_var` MAXVALUE `LOCAL_ID_MAX` */
-static void create_sequence_for_label(RangeVar *seq_range_var)
+static void create_sequence_for_label(RangeVar* seq_range_var)
 {
-    ParseState *pstate;
-    CreateSeqStmt *seq_stmt;
+    ParseState* pstate;
+    CreateSeqStmt* seq_stmt;
     /* greater than MAXINT8LEN+1 */
     char buf[32];
-    DefElem *maxvalue;
+    DefElem* maxvalue;
 
     pstate = make_parsestate(NULL);
     pstate->p_sourcetext = "(generated CREATE SEQUENCE command)";
@@ -508,7 +642,7 @@ static void create_sequence_for_label(RangeVar *seq_range_var)
     seq_stmt = makeNode(CreateSeqStmt);
     seq_stmt->sequence = seq_range_var;
     pg_lltoa(ENTRY_ID_MAX, buf);
-    maxvalue = makeDefElem("maxvalue", (Node *)makeFloat(pstrdup(buf)), -1);
+    maxvalue = makeDefElem("maxvalue", (Node*)makeFloat(pstrdup(buf)), -1);
     seq_stmt->options = list_make1(maxvalue);
     seq_stmt->ownerId = InvalidOid;
     seq_stmt->for_identity = false;
@@ -521,9 +655,9 @@ static void create_sequence_for_label(RangeVar *seq_range_var)
 /*
  * Builds the primary key constraint for when a table is created.
  */
-static Constraint *build_pk_constraint(void)
+static Constraint* build_pk_constraint(void)
 {
-    Constraint *pk;
+    Constraint* pk;
 
     pk = makeNode(Constraint);
     pk->contype = CONSTR_PRIMARY;
@@ -540,27 +674,27 @@ static Constraint *build_pk_constraint(void)
  * Construct a FuncCall node that will create the default logic for the label's
  * id.
  */
-static FuncCall *build_id_default_func_expr(char *graph_name, char *label_name,
-                                            char *schema_name, char *seq_name)
+static FuncCall* build_id_default_func_expr(char* graph_name, char* label_name,
+    char* schema_name, char* seq_name)
 {
-    List *label_id_func_name;
-    A_Const *graph_name_const;
-    A_Const *label_name_const;
-    List *label_id_func_args;
-    FuncCall *label_id_func;
-    List *nextval_func_name;
-    char *qualified_seq_name;
-    A_Const *qualified_seq_name_const;
-    TypeCast *regclass_cast;
-    List *nextval_func_args;
-    FuncCall *nextval_func;
-    List *graphid_func_name;
-    List *graphid_func_args;
-    FuncCall *graphid_func;
+    List* label_id_func_name;
+    A_Const* graph_name_const;
+    A_Const* label_name_const;
+    List* label_id_func_args;
+    FuncCall* label_id_func;
+    List* nextval_func_name;
+    char* qualified_seq_name;
+    A_Const* qualified_seq_name_const;
+    TypeCast* regclass_cast;
+    List* nextval_func_args;
+    FuncCall* nextval_func;
+    List* graphid_func_name;
+    List* graphid_func_args;
+    FuncCall* graphid_func;
 
     /* Build a node that gets the label id */
     label_id_func_name = list_make2(makeString("ag_catalog"),
-                                    makeString("_label_id"));
+        makeString("_label_id"));
     graph_name_const = makeNode(A_Const);
     graph_name_const->val.type = T_String;
     graph_name_const->val.val.str = graph_name;
@@ -581,7 +715,7 @@ static FuncCall *build_id_default_func_expr(char *graph_name, char *label_name,
     qualified_seq_name_const->location = -1;
     regclass_cast = makeNode(TypeCast);
     regclass_cast->typeName = SystemTypeName("regclass");
-    regclass_cast->arg = (Node *)qualified_seq_name_const;
+    regclass_cast->arg = (Node*)qualified_seq_name_const;
     regclass_cast->location = -1;
     nextval_func_args = list_make1(regclass_cast);
     nextval_func = makeFuncCall(nextval_func_name, nextval_func_args, COERCE_SQL_SYNTAX, -1);
@@ -591,7 +725,7 @@ static FuncCall *build_id_default_func_expr(char *graph_name, char *label_name,
      * and the next val function for the given sequence.
      */
     graphid_func_name = list_make2(makeString("ag_catalog"),
-                                   makeString("_graphid"));
+        makeString("_graphid"));
     graphid_func_args = list_make2(label_id_func, nextval_func);
     graphid_func = makeFuncCall(graphid_func_name, graphid_func_args, COERCE_SQL_SYNTAX, -1);
 
@@ -601,28 +735,28 @@ static FuncCall *build_id_default_func_expr(char *graph_name, char *label_name,
 /*
  * Construct a default constraint on the id column for a newly created table
  */
-static Constraint *build_id_default(char *graph_name, char *label_name,
-                                    char *schema_name, char *seq_name)
+static Constraint* build_id_default(char* graph_name, char* label_name,
+    char* schema_name, char* seq_name)
 {
-    FuncCall *graphid_func;
-    Constraint *id_default;
+    FuncCall* graphid_func;
+    Constraint* id_default;
 
     graphid_func = build_id_default_func_expr(graph_name, label_name,
-                                              schema_name, seq_name);
+        schema_name, seq_name);
 
     id_default = makeNode(Constraint);
     id_default->contype = CONSTR_DEFAULT;
     id_default->location = -1;
-    id_default->raw_expr = (Node *)graphid_func;
+    id_default->raw_expr = (Node*)graphid_func;
     id_default->cooked_expr = NULL;
 
     return id_default;
 }
 
 /* NOT NULL */
-static Constraint *build_not_null_constraint(void)
+static Constraint* build_not_null_constraint(void)
 {
-    Constraint *not_null;
+    Constraint* not_null;
 
     not_null = makeNode(Constraint);
     not_null->contype = CONSTR_NOTNULL;
@@ -632,21 +766,21 @@ static Constraint *build_not_null_constraint(void)
 }
 
 /* DEFAULT "ag_catalog"."agtype_build_map"() */
-static Constraint *build_properties_default(void)
+static Constraint* build_properties_default(void)
 {
-    List *func_name;
-    FuncCall *func;
-    Constraint *props_default;
+    List* func_name;
+    FuncCall* func;
+    Constraint* props_default;
 
     /* "ag_catalog"."agtype_build_map"() */
     func_name = list_make2(makeString("ag_catalog"),
-                           makeString("agtype_build_map"));
+        makeString("agtype_build_map"));
     func = makeFuncCall(func_name, NIL, COERCE_SQL_SYNTAX, -1);
 
     props_default = makeNode(Constraint);
     props_default->contype = CONSTR_DEFAULT;
     props_default->location = -1;
-    props_default->raw_expr = (Node *)func;
+    props_default->raw_expr = (Node*)func;
     props_default->cooked_expr = NULL;
 
     return props_default;
@@ -656,19 +790,19 @@ static Constraint *build_properties_default(void)
  * Alter the default constraint on the label's id to the use the given
  * sequence.
  */
-static void change_label_id_default(char *graph_name, char *label_name,
-                                    char *schema_name, char *seq_name,
-                                    Oid relid)
+static void change_label_id_default(char* graph_name, char* label_name,
+    char* schema_name, char* seq_name,
+    Oid relid)
 {
-    ParseState *pstate;
-    AlterTableStmt *tbl_stmt;
-    AlterTableCmd *tbl_cmd;
-    RangeVar *rv;
-    FuncCall *func_call;
+    ParseState* pstate;
+    AlterTableStmt* tbl_stmt;
+    AlterTableCmd* tbl_cmd;
+    RangeVar* rv;
+    FuncCall* func_call;
     AlterTableUtilityContext atuc;
 
     func_call = build_id_default_func_expr(graph_name, label_name, schema_name,
-                                           seq_name);
+        seq_name);
 
     rv = makeRangeVar(schema_name, label_name, -1);
 
@@ -682,7 +816,7 @@ static void change_label_id_default(char *graph_name, char *label_name,
     tbl_cmd = makeNode(AlterTableCmd);
     tbl_cmd->subtype = AT_ColumnDefault;
     tbl_cmd->name = "id";
-    tbl_cmd->def = (Node *)func_call;
+    tbl_cmd->def = (Node*)func_call;
 
     tbl_stmt->cmds = list_make1(tbl_cmd);
 
@@ -696,14 +830,14 @@ static void change_label_id_default(char *graph_name, char *label_name,
 }
 
 /* CREATE SEQUENCE `seq_range_var` OWNED BY `schema_name`.`rel_name`."id" */
-static void alter_sequence_owned_by_for_label(RangeVar *seq_range_var,
-                                              char *rel_name)
+static void alter_sequence_owned_by_for_label(RangeVar* seq_range_var,
+    char* rel_name)
 {
-    ParseState *pstate;
-    AlterSeqStmt *seq_stmt;
-    char *schema_name;
-    List *id;
-    DefElem *owned_by;
+    ParseState* pstate;
+    AlterSeqStmt* seq_stmt;
+    char* schema_name;
+    List* id;
+    DefElem* owned_by;
 
     pstate = make_parsestate(NULL);
     pstate->p_sourcetext = "(generated ALTER SEQUENCE command)";
@@ -712,8 +846,8 @@ static void alter_sequence_owned_by_for_label(RangeVar *seq_range_var,
     seq_stmt->sequence = seq_range_var;
     schema_name = seq_range_var->schemaname;
     id = list_make3(makeString(schema_name), makeString(rel_name),
-                    makeString("id"));
-    owned_by = makeDefElem("owned_by", (Node *)id, -1);
+        makeString("id"));
+    owned_by = makeDefElem("owned_by", (Node*)id, -1);
     seq_stmt->options = list_make1(owned_by);
     seq_stmt->for_identity = false;
     seq_stmt->missing_ok = false;
@@ -732,8 +866,8 @@ static int32 get_new_label_id(Oid graph_oid, Oid nsp_id)
     if (!OidIsValid(seq_id))
     {
         ereport(ERROR, (errcode(ERRCODE_UNDEFINED_TABLE),
-                        errmsg("sequence \"%s\" does not exists",
-                               LABEL_ID_SEQ_NAME)));
+            errmsg("sequence \"%s\" does not exists",
+                LABEL_ID_SEQ_NAME)));
     }
 
     for (cnt = LABEL_ID_MIN; cnt <= LABEL_ID_MAX; cnt++)
@@ -741,18 +875,18 @@ static int32 get_new_label_id(Oid graph_oid, Oid nsp_id)
         int32 label_id;
 
         /* the data type of the sequence is integer (int4) */
-        label_id = (int32) nextval_internal(seq_id, true);
+        label_id = (int32)nextval_internal(seq_id, true);
         Assert(label_id_is_valid(label_id));
         if (!label_id_exists(graph_oid, label_id))
         {
-            return (int32) label_id;
+            return (int32)label_id;
         }
     }
 
     ereport(ERROR, (errcode(ERRCODE_PROGRAM_LIMIT_EXCEEDED),
-                    errmsg("no more new labels are available"),
-                    errhint("The maximum number of labels in a graph is %d",
-                            LABEL_ID_MAX)));
+        errmsg("no more new labels are available"),
+        errhint("The maximum number of labels in a graph is %d",
+            LABEL_ID_MAX)));
     return 0;
 }
 
@@ -763,25 +897,25 @@ Datum drop_label(PG_FUNCTION_ARGS)
     Name graph_name;
     Name label_name;
     bool force;
-    char *graph_name_str;
-    graph_cache_data *cache_data;
+    char* graph_name_str;
+    graph_cache_data* cache_data;
     Oid graph_oid;
     Oid nsp_id;
-    char *label_name_str;
+    char* label_name_str;
     Oid label_relation;
-    char *schema_name;
-    char *rel_name;
-    List *qname;
+    char* schema_name;
+    char* rel_name;
+    List* qname;
 
     if (PG_ARGISNULL(0))
     {
         ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-                        errmsg("graph name must not be NULL")));
+            errmsg("graph name must not be NULL")));
     }
     if (PG_ARGISNULL(1))
     {
         ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-                        errmsg("label name must not be NULL")));
+            errmsg("label name must not be NULL")));
     }
     graph_name = PG_GETARG_NAME(0);
     label_name = PG_GETARG_NAME(1);
@@ -792,8 +926,8 @@ Datum drop_label(PG_FUNCTION_ARGS)
     if (!cache_data)
     {
         ereport(ERROR,
-                (errcode(ERRCODE_UNDEFINED_SCHEMA),
-                 errmsg("graph \"%s\" does not exist", graph_name_str)));
+            (errcode(ERRCODE_UNDEFINED_SCHEMA),
+                errmsg("graph \"%s\" does not exist", graph_name_str)));
     }
     graph_oid = cache_data->oid;
     nsp_id = cache_data->namespace;
@@ -803,14 +937,14 @@ Datum drop_label(PG_FUNCTION_ARGS)
     if (!OidIsValid(label_relation))
     {
         ereport(ERROR,
-                (errcode(ERRCODE_UNDEFINED_TABLE),
-                 errmsg("label \"%s\" does not exist", label_name_str)));
+            (errcode(ERRCODE_UNDEFINED_TABLE),
+                errmsg("label \"%s\" does not exist", label_name_str)));
     }
 
     if (force)
     {
         ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-                        errmsg("force option is not supported yet")));
+            errmsg("force option is not supported yet")));
     }
 
     /* validate schema_name */
@@ -818,9 +952,9 @@ Datum drop_label(PG_FUNCTION_ARGS)
     if (schema_name == NULL)
     {
         ereport(ERROR,
-                (errcode(ERRCODE_UNDEFINED_TABLE),
-                 errmsg("schema_name not found for namespace id \"%d\"",
-                        nsp_id)));
+            (errcode(ERRCODE_UNDEFINED_TABLE),
+                errmsg("schema_name not found for namespace id \"%d\"",
+                    nsp_id)));
     }
 
     /* validate rel_name */
@@ -828,9 +962,9 @@ Datum drop_label(PG_FUNCTION_ARGS)
     if (rel_name == NULL)
     {
         ereport(ERROR,
-                (errcode(ERRCODE_UNDEFINED_TABLE),
-                 errmsg("rel_name not found for label \"%s\"",
-                        label_name_str)));
+            (errcode(ERRCODE_UNDEFINED_TABLE),
+                errmsg("rel_name not found for label \"%s\"",
+                    label_name_str)));
     }
 
     /* build qualified name */
@@ -842,15 +976,15 @@ Datum drop_label(PG_FUNCTION_ARGS)
     /* delete_label() will be called in object_access() */
 
     ereport(NOTICE, (errmsg("label \"%s\".\"%s\" has been dropped",
-                            graph_name_str, label_name_str)));
+        graph_name_str, label_name_str)));
 
     PG_RETURN_VOID();
 }
 
 /* See RemoveRelations() for more details. */
-static void remove_relation(List *qname)
+static void remove_relation(List* qname)
 {
-    RangeVar *rel;
+    RangeVar* rel;
     Oid rel_oid;
     ObjectAddress address;
 
@@ -864,9 +998,9 @@ static void remove_relation(List *qname)
 
     rel = makeRangeVarFromNameList(qname);
     rel_oid = RangeVarGetRelidExtended(rel, AccessExclusiveLock,
-                                       RVR_MISSING_OK,
-                                       range_var_callback_for_remove_relation,
-                                       NULL);
+        RVR_MISSING_OK,
+        range_var_callback_for_remove_relation,
+        NULL);
 
     if (!OidIsValid(rel_oid))
     {
@@ -875,9 +1009,9 @@ static void remove_relation(List *qname)
          * drop_graph()
          */
         ereport(ERROR, (errcode(ERRCODE_INTERNAL_ERROR),
-                        errmsg("ag_label catalog is corrupted"),
-                        errhint("Table \"%s\".\"%s\" does not exist",
-                                rel->schemaname, rel->relname)));
+            errmsg("ag_label catalog is corrupted"),
+            errhint("Table \"%s\".\"%s\" does not exist",
+                rel->schemaname, rel->relname)));
     }
 
     /* concurrent is false */
@@ -892,10 +1026,10 @@ static void remove_relation(List *qname)
 }
 
 /* See RangeVarCallbackForDropRelation() for more details. */
-static void range_var_callback_for_remove_relation(const RangeVar *rel,
-                                                   Oid rel_oid,
-                                                   Oid odl_rel_oid,
-                                                   void *arg)
+static void range_var_callback_for_remove_relation(const RangeVar* rel,
+    Oid rel_oid,
+    Oid odl_rel_oid,
+    void* arg)
 {
     /*
      * arg is NULL because relkind is always RELKIND_RELATION, heapOid is
@@ -903,9 +1037,9 @@ static void range_var_callback_for_remove_relation(const RangeVar *rel,
      * always false. See RemoveRelations() for more details.
      */
 
-    /* heapOid is always InvalidOid */
+     /* heapOid is always InvalidOid */
 
-    /* partParentOid is always InvalidOid */
+     /* partParentOid is always InvalidOid */
 
     if (!OidIsValid(rel_oid))
         return;
@@ -918,8 +1052,8 @@ static void range_var_callback_for_remove_relation(const RangeVar *rel,
         !pg_namespace_ownercheck(get_rel_namespace(rel_oid), GetUserId()))
     {
         aclcheck_error(ACLCHECK_NOT_OWNER,
-                       get_relkind_objtype(get_rel_relkind(rel_oid)),
-                       rel->relname);
+            get_relkind_objtype(get_rel_relkind(rel_oid)),
+            rel->relname);
     }
 
     /* the target relation is not system class */
