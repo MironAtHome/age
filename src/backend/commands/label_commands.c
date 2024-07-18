@@ -333,13 +333,14 @@ Datum age_vertex_exists(PG_FUNCTION_ARGS)
     graph_name_str = NameStr(*graph_name);
     vertex_name_str = NameStr(*vertex_name);
 
-    /*checking if the name of the graph falls under the pre-decided graph naming conventions(regex) */
+    /*checking if the name of the graph falls under the pre-decided graph length and naming conventions(regex) */
     if (!is_valid_graph_name(graph_name_str))
     {
         ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
             errmsg("graph name \"%s\" is invalid", graph_name_str)));
     }
 
+    /*checking if the name of the label falls under the pre-decided label length and naming conventions(regex)*/
     if (is_valid_label(vertex_name_str, graph_name_str, LABEL_KIND_VERTEX))
     {
         PG_RETURN_BOOL(true);
@@ -373,13 +374,14 @@ Datum age_edge_exists(PG_FUNCTION_ARGS)
     graph_name_str = NameStr(*graph_name);
     edge_name_str = NameStr(*edge_name);
 
-    /*checking if the name of the graph falls under the pre-decided graph naming conventions(regex) */
+    /*checking if the name of the graph falls under the pre-decided graph length and naming conventions(regex) */
     if (!is_valid_graph_name(graph_name_str))
     {
         ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
             errmsg("graph name \"%s\" is invalid", graph_name_str)));
     }
 
+    /*checking if the name of the label falls under the pre-decided label length and naming conventions(regex)*/
     if (!is_valid_label_name(edge_name_str))
     {
         ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
@@ -397,6 +399,7 @@ Datum age_edge_exists(PG_FUNCTION_ARGS)
 static bool is_valid_label(char* label_name, char* graph_name, char label_type)
 {
     Oid graph_oid;
+    Oid label_oid;
     label_cache_data* cache_data;
     
     if (!is_valid_graph_name(graph_name))
@@ -415,18 +418,12 @@ static bool is_valid_label(char* label_name, char* graph_name, char label_type)
         return false;
     }
 
-    cache_data = search_label_name_graph_cache(label_name, graph_oid);
-    if (NULL == cache_data)
+    if (!OidIsValid(label_oid = get_label_id(label_name, graph_oid)))
     {
         return false;
     }
 
-    if (!OidIsValid(cache_data->id))
-    {
-        return false;
-    }
-
-    if (cache_data->kind != label_type)
+    if (get_label_kind(label_name, graph_oid) != label_type)
     {
         return false;
     }
@@ -452,18 +449,38 @@ void create_label(char* graph_name, char* label_name, char label_type,
     int32 label_id;
     Oid relation_id;
 
-    if (!is_valid_label_name(label_name))
+    if (!is_valid_graph_name(graph_name))
     {
-        ereport(ERROR, (errcode(ERRCODE_UNDEFINED_SCHEMA),
-            errmsg("label name is invalid")));
+        ereport(ERROR, (errcode(ERRCODE_INVALID_NAME),
+            errmsg("graph name is invalid")));
     }
 
     cache_data = search_graph_name_cache(graph_name);
+
     if (!cache_data)
     {
-        ereport(ERROR, (errcode(ERRCODE_UNDEFINED_SCHEMA),
+        ereport(ERROR, (errcode(ERRCODE_INVALID_NAME),
             errmsg("graph \"%s\" does not exist", graph_name)));
     }
+
+    if (!OidIsValid(cache_data->oid))
+    {
+        ereport(ERROR, (errcode(ERRCODE_UNDEFINED_OBJECT),
+            errmsg("graph \"%s\" does not exist", graph_name)));
+    }
+
+    if (!is_valid_label_name(label_name))
+    {
+        ereport(ERROR, (errcode(ERRCODE_INVALID_NAME),
+            errmsg("label name is invalid")));
+    }
+
+    if (is_valid_label(label_name, graph_name, label_type))
+    {
+        ereport(ERROR, (errcode(ERRCODE_DUPLICATE_OBJECT),
+            errmsg("label %s already exists", label_name)));
+    }
+
     graph_oid = cache_data->oid;
     nsp_id = cache_data->namespace;
 
