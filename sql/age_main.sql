@@ -110,14 +110,19 @@ CREATE FUNCTION ag_catalog.create_elabel(graph_name name, label_name name)
     LANGUAGE c
     AS 'MODULE_PATHNAME';
 
+CREATE FUNCTION ag_catalog.vertex_exists(graph_name name, vertex_name name)
+    RETURNS boolean
+    LANGUAGE c
+    AS 'MODULE_PATHNAME', 'age_vertex_exists';
+
+CREATE FUNCTION ag_catalog.edge_exists(graph_name name, edge_name name)
+    RETURNS boolean
+    LANGUAGE c
+    AS 'MODULE_PATHNAME', 'age_edge_exists';
+
 CREATE FUNCTION ag_catalog.alter_graph(graph_name name, operation cstring,
                                        new_value name)
     RETURNS void
-    LANGUAGE c
-    AS 'MODULE_PATHNAME';
-
-CREATE FUNCTION ag_catalog.age_graph_exists(graph_name name)
-    RETURNS boolean
     LANGUAGE c
     AS 'MODULE_PATHNAME';
 

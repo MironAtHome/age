@@ -94,6 +94,8 @@ static void range_var_callback_for_remove_relation(const RangeVar *rel,
                                                    Oid odl_rel_oid,
                                                    void *arg);
 
+static bool is_valid_label(char *label_name, char *graph_name, char label_type);
+
 PG_FUNCTION_INFO_V1(age_is_valid_label_name);
 
 Datum age_is_valid_label_name(PG_FUNCTION_ARGS)
@@ -130,7 +132,15 @@ Datum age_is_valid_label_name(PG_FUNCTION_ARGS)
     label_name = pnstrdup(agtv_value->val.string.val,
                           agtv_value->val.string.len);
 
-    is_valid = is_valid_label(label_name, 0);
+    if (NULL == label_name)
+    {
+        ereport(ERROR,
+            (errcode(ERRCODE_DATA_EXCEPTION),
+                errmsg("is_valid_label_name() could not produce label name string copy")));
+    }
+
+    is_valid = is_valid_label_name(label_name);
+
     pfree(label_name);
 
     if (is_valid)
@@ -188,14 +198,12 @@ Datum create_vlabel(PG_FUNCTION_ARGS)
     label_name_str = NameStr(*label_name);
 
     /* Check if graph does not exist */
-    if (!graph_exists(graph_name_str))
+    if (!OidIsValid(graph_oid = get_graph_oid(graph_name_str)))
     {
         ereport(ERROR,
-                (errcode(ERRCODE_UNDEFINED_SCHEMA),
-                        errmsg("graph \"%s\" does not exist.", graph_name_str)));
+            (errcode(ERRCODE_UNDEFINED_SCHEMA),
+                errmsg("graph \"%s\" does not exist", graph_name_str)));
     }
-
-    graph_oid = get_graph_oid(graph_name_str);
 
     /* Check if label with the input name already exists */
     if (label_exists(label_name_str, graph_oid))
@@ -300,6 +308,127 @@ Datum create_elabel(PG_FUNCTION_ARGS)
     PG_RETURN_VOID();
 }
 
+PG_FUNCTION_INFO_V1(age_vertex_exists);
+
+Datum age_vertex_exists(PG_FUNCTION_ARGS)
+{
+    Name graph_name;
+    Name vertex_name;
+
+    char* graph_name_str;
+    char* vertex_name_str;
+
+    bool exists = false;
+
+    /* if no argument is passed with the function, graph name cannot be null */
+    if (PG_ARGISNULL(0))
+    {
+        ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+            errmsg("vertex name can not be NULL")));
+    }
+
+    graph_name = PG_GETARG_NAME(0);
+    vertex_name = PG_GETARG_NAME(1);
+
+    graph_name_str = NameStr(*graph_name);
+    vertex_name_str = NameStr(*vertex_name);
+
+    /*checking if the name of the graph falls under the pre-decided graph length and naming conventions(regex) */
+    if (!is_valid_graph_name(graph_name_str))
+    {
+        ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+            errmsg("graph name \"%s\" is invalid", graph_name_str)));
+    }
+
+    /*checking if the name of the label falls under the pre-decided label length and naming conventions(regex)*/
+    if (is_valid_label(vertex_name_str, graph_name_str, LABEL_KIND_VERTEX))
+    {
+        PG_RETURN_BOOL(true);
+    }
+
+    PG_RETURN_BOOL(false);
+}
+
+PG_FUNCTION_INFO_V1(age_edge_exists);
+
+Datum age_edge_exists(PG_FUNCTION_ARGS)
+{
+    Name graph_name;
+    Name edge_name;
+
+    char* graph_name_str;
+    char* edge_name_str;
+
+    bool exists = false;
+
+    /* if no argument is passed with the function, graph name cannot be null */
+    if (PG_ARGISNULL(0))
+    {
+        ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+            errmsg("vertex name can not be NULL")));
+    }
+
+    graph_name = PG_GETARG_NAME(0);
+    edge_name = PG_GETARG_NAME(1);
+
+    graph_name_str = NameStr(*graph_name);
+    edge_name_str = NameStr(*edge_name);
+
+    /*checking if the name of the graph falls under the pre-decided graph length and naming conventions(regex) */
+    if (!is_valid_graph_name(graph_name_str))
+    {
+        ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+            errmsg("graph name \"%s\" is invalid", graph_name_str)));
+    }
+
+    /*checking if the name of the label falls under the pre-decided label length and naming conventions(regex)*/
+    if (!is_valid_label_name(edge_name_str))
+    {
+        ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+            errmsg("edge name \"%s\" is invalid", edge_name_str)));
+    }
+
+    if (is_valid_label(edge_name_str, graph_name_str, LABEL_KIND_EDGE))
+    {
+        PG_RETURN_BOOL(true);
+    }
+    
+    PG_RETURN_BOOL(false);
+}
+
+static bool is_valid_label(char* label_name, char* graph_name, char label_type)
+{
+    Oid graph_oid;
+    
+    if (!is_valid_graph_name(graph_name))
+    {
+        return false;
+    }
+
+    /* Check if graph does not exist */
+    if (!OidIsValid(graph_oid = get_graph_oid(graph_name)))
+    {
+        return false;
+    }
+
+    if (!is_valid_label_name(label_name))
+    {
+        return false;
+    }
+
+    if (!OidIsValid(get_label_id(label_name, graph_oid)))
+    {
+        return false;
+    }
+
+    if (get_label_kind(label_name, graph_oid) != label_type)
+    {
+        return false;
+    }
+
+    return true;
+}
+
 /*
  * For the new label, create an entry in ag_catalog.ag_label, create a
  * new table and sequence. Returns the oid from the new tuple in
@@ -308,7 +437,6 @@ Datum create_elabel(PG_FUNCTION_ARGS)
 void create_label(char *graph_name, char *label_name, char label_type,
                   List *parents)
 {
-    graph_cache_data *cache_data;
     Oid graph_oid;
     Oid nsp_id;
     char *schema_name;
@@ -318,20 +446,37 @@ void create_label(char *graph_name, char *label_name, char label_type,
     int32 label_id;
     Oid relation_id;
 
-    if (!is_valid_label(label_name, label_type))
+    if (!is_valid_graph_name(graph_name))
     {
-        ereport(ERROR, (errcode(ERRCODE_UNDEFINED_SCHEMA),
-                        errmsg("label name is invalid")));
+        ereport(ERROR, (errcode(ERRCODE_INVALID_NAME),
+            errmsg("graph name is invalid")));
     }
 
-    cache_data = search_graph_name_cache(graph_name);
-    if (!cache_data)
+    /* Check if graph does not exist */
+    if (!OidIsValid(graph_oid = get_graph_oid(graph_name)))
     {
-        ereport(ERROR, (errcode(ERRCODE_UNDEFINED_SCHEMA),
-                        errmsg("graph \"%s\" does not exist", graph_name)));
+        ereport(ERROR, (errcode(ERRCODE_UNDEFINED_OBJECT),
+            errmsg("graph \"%s\" does not exist", graph_name)));
     }
-    graph_oid = cache_data->oid;
-    nsp_id = cache_data->namespace;
+	
+    /* Check if graph namespace does not exist */
+    if (!OidIsValid(nsp_id = get_graph_namespace(graph_name)))
+    {
+        ereport(ERROR, (errcode(ERRCODE_UNDEFINED_OBJECT),
+            errmsg("graph \"%s\" namespace does not exist", graph_name)));
+    }
+
+    if (!is_valid_label_name(label_name))
+    {
+        ereport(ERROR, (errcode(ERRCODE_INVALID_NAME),
+            errmsg("label name is invalid")));
+    }
+
+    if (is_valid_label(label_name, graph_name, label_type))
+    {
+        ereport(ERROR, (errcode(ERRCODE_DUPLICATE_OBJECT),
+            errmsg("label %s already exists", label_name)));
+    }
 
     /* create a sequence for the new label to generate unique IDs for vertices */
     schema_name = get_namespace_name(nsp_id);
@@ -764,7 +909,6 @@ Datum drop_label(PG_FUNCTION_ARGS)
     Name label_name;
     bool force;
     char *graph_name_str;
-    graph_cache_data *cache_data;
     Oid graph_oid;
     Oid nsp_id;
     char *label_name_str;
@@ -788,15 +932,20 @@ Datum drop_label(PG_FUNCTION_ARGS)
     force = PG_GETARG_BOOL(2);
 
     graph_name_str = NameStr(*graph_name);
-    cache_data = search_graph_name_cache(graph_name_str);
-    if (!cache_data)
+	
+    /* Check if graph does not exist */
+    if (!OidIsValid(graph_oid = get_graph_oid(graph_name_str)))
     {
-        ereport(ERROR,
-                (errcode(ERRCODE_UNDEFINED_SCHEMA),
-                 errmsg("graph \"%s\" does not exist", graph_name_str)));
+        ereport(ERROR, (errcode(ERRCODE_UNDEFINED_OBJECT),
+            errmsg("graph \"%s\" does not exist", graph_name_str)));
     }
-    graph_oid = cache_data->oid;
-    nsp_id = cache_data->namespace;
+	
+    /* Check if graph namespace does not exist */
+    if (!OidIsValid(nsp_id = get_graph_namespace(graph_name_str)))
+    {
+        ereport(ERROR, (errcode(ERRCODE_UNDEFINED_OBJECT),
+            errmsg("graph \"%s\" namespace does not exist", graph_name_str)));
+    }
 
     label_name_str = NameStr(*label_name);
     label_relation = get_label_relation(label_name_str, graph_oid);

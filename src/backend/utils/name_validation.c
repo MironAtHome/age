@@ -47,15 +47,10 @@ int is_valid_graph_name(const char *graph_name)
 /*
  * Returns whether the label name is valid.
  *
- * Note: label_type parameter is not used in this implementation.
- * It should be used if validation algorithm for edge and vertex
- * differs in future.
- *
  * @param label_name name of the label
- * @param label_type label type defined in label_commands.h
- * @return int
+ * @return boolean
  */
-int is_valid_label(char *label_name, char label_type)
+bool is_valid_label_name(const char *label_name)
 {
     int len = strlen(label_name);
 

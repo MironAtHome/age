@@ -2251,7 +2251,145 @@ Datum make_edge(Datum id, Datum startid, Datum endid, Datum label,
                                properties);
 }
 
-static agtype_value* jsonb_each_to_agtype_map_worker(FunctionCallInfo fcinfo)
+static void datum_to_agtype_map_worker(FunctionCallInfo fcinfo, agtype_in_state *result)
+{
+    int nargs = 0;
+    int i = 0;
+    agt_type_category tcategory;
+    Oid outfuncoid;
+    Datum *args;
+    bool* nulls;
+    Oid* types;
+
+    HeapTupleHeader td;
+    Oid tup_type;
+    int32 tup_typmod;
+    TupleDesc tupdesc;
+    HeapTupleData tmptup, * tuple;
+
+    check_stack_depth();
+
+    /* build argument values to build the object */
+    nargs = extract_variadic_args(fcinfo, 0, true, &args, &types, &nulls);
+
+    if (true == nulls[0])
+    {
+        ereport(
+            ERROR,
+            (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+                errmsg("row_to_agtype_map_worker does not allow null input parameter")));
+    }
+
+    if (nargs != 1)
+    {
+        ereport(
+            ERROR,
+            (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+                errmsg("row_to_agtype_map_worker allows only one parameter of type Datum")));
+    }
+
+    if (types[0] == InvalidOid)
+    {
+        ereport(ERROR,
+            (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+                errmsg("row_to_agtype_map_worker could not determine input data type")));
+    }
+
+    agtype_categorize_type(types[0], &tcategory, &outfuncoid);
+
+    if (!(AGT_TYPE_COMPOSITE == tcategory))
+    {
+        ereport(ERROR,
+            (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+                errmsg("row_to_agtype_map_worker accepts only single row as input parameter")));
+    }
+
+    td = DatumGetHeapTupleHeader(args[0]);
+
+    /* Extract rowtype info and find a tupdesc */
+    tup_type = HeapTupleHeaderGetTypeId(td);
+    tup_typmod = HeapTupleHeaderGetTypMod(td);
+    tupdesc = lookup_rowtype_tupdesc(tup_type, tup_typmod);
+
+    /* Build a temporary HeapTuple control structure */
+    tmptup.t_len = HeapTupleHeaderGetDatumLength(td);
+    tmptup.t_data = td;
+    tuple = &tmptup;
+
+    memset(result, 0, sizeof(agtype_in_state));
+
+    result->res = push_agtype_value(&result->parse_state, WAGT_BEGIN_OBJECT,
+        NULL);
+
+    for (i = 0; i < tupdesc->natts; i++)
+    {
+        Datum val;
+        bool isnull;
+        char* attname;
+        agt_type_category tcategory;
+        Oid outfuncoid;
+        agtype_value v;
+        Form_pg_attribute att = TupleDescAttr(tupdesc, i);
+
+        if (att->attisdropped)
+            continue;
+
+        attname = NameStr(att->attname);
+
+        v.type = AGTV_STRING;
+        /*
+         * don't need check_string_length here
+         * - can't exceed maximum name length
+         */
+        v.val.string.len = strlen(attname);
+        v.val.string.val = attname;
+
+        result->res = push_agtype_value(&result->parse_state, WAGT_KEY, &v);
+
+        val = heap_getattr(tuple, i + 1, tupdesc, &isnull);
+
+        if (isnull)
+        {
+            tcategory = AGT_TYPE_NULL;
+            outfuncoid = InvalidOid;
+        }
+        else
+        {
+            agtype_categorize_type(att->atttypid, &tcategory, &outfuncoid);
+        }
+
+        datum_to_agtype(val, isnull, result, tcategory, outfuncoid, false);
+    }
+
+    result->res = push_agtype_value(&result->parse_state, WAGT_END_OBJECT,
+        NULL);
+
+    ReleaseTupleDesc(tupdesc);
+
+    return;
+}
+
+PG_FUNCTION_INFO_V1(datum_to_agtype_map);
+
+/*
+ * SQL function datum_to_agtype_map(composite row)
+ */
+PGMODULEEXPORT Datum datum_to_agtype_map(PG_FUNCTION_ARGS)
+{
+    agtype_in_state result;
+
+    /* check for null argument */
+    if (fcinfo->args[0].isnull)
+    {
+        PG_RETURN_NULL();
+    }
+
+    datum_to_agtype_map_worker(fcinfo, &result);
+
+    PG_RETURN_POINTER(agtype_value_to_agtype(result.res));
+}
+
+static agtype_value* jsonb_to_agtype_map_worker(FunctionCallInfo fcinfo)
 {
     Jsonb* jb = NULL;
     int nargs;
@@ -2383,7 +2521,7 @@ PGMODULEEXPORT Datum jsonb_to_agtype_map(PG_FUNCTION_ARGS)
         PG_RETURN_NULL();
     }
 
-    result = jsonb_each_to_agtype_map_worker(fcinfo);
+    result = jsonb_to_agtype_map_worker(fcinfo);
     if (result == NULL)
     {
         PG_RETURN_NULL();
@@ -2415,7 +2553,7 @@ static agtype_value *agtype_build_map_as_agtype_value(FunctionCallInfo fcinfo)
             ERROR,
             (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
              errmsg("argument list must have been even number of elements"),
-             errhint("The arguments of agtype_build_map() must consist of alternating keys and values.")));
+             errhint("The arguments of agtype_build_map_as_agtype_value() must consist of alternating keys and values.")));
     }
 
     memset(&result, 0, sizeof(agtype_in_state));

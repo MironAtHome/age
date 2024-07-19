@@ -127,7 +127,12 @@ sub mkvcbuild
 			if (index($c_file_content, "PGMODULEEXPORT Datum age_is_valid_label_name(PG_FUNCTION_ARGS)") ==  -1) {
                 $c_file_content =~ s/Datum age\_is\_valid\_label\_name\(PG_FUNCTION_ARGS\)/PGMODULEEXPORT Datum age_is_valid_label_name(PG_FUNCTION_ARGS)/ig;
 				$file_modified = 1;
-			}			
+			}
+			if (index($c_file_content, "PGMODULEEXPORT Datum age_vertex_exists(PG_FUNCTION_ARGS)") ==  -1) {
+                $c_file_content =~ s/Datum age\_vertex\_exists\(PG_FUNCTION_ARGS\)/PGMODULEEXPORT Datum age_vertex_exists(PG_FUNCTION_ARGS)/ig;
+				$c_file_content =~ s/Datum age\_edge\_exists\(PG_FUNCTION_ARGS\)/PGMODULEEXPORT Datum age_edge_exists(PG_FUNCTION_ARGS)/ig;
+				$file_modified = 1;
+			}	
 		}
 
 		if ($c_file eq "graph_commands.c") {
