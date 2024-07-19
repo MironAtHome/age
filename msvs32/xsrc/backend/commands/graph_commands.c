@@ -136,15 +136,13 @@ PGMODULEEXPORT Datum age_graph_exists(PG_FUNCTION_ARGS)
         ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
             errmsg("graph name \"%s\" is invalid", graph_name_str)));
     }
-
+	
     if (graph_exists(graph_name_str))
     {
         PG_RETURN_BOOL(true);
     }
-    else
-    {
-        PG_RETURN_BOOL(false);
-    }
+    
+    PG_RETURN_BOOL(false);
 }
 
 static Oid create_schema_for_graph(const Name graph_name)

@@ -140,10 +140,8 @@ Datum age_graph_exists(PG_FUNCTION_ARGS)
     {
         PG_RETURN_BOOL(true);
     }
-    else
-    {
-        PG_RETURN_BOOL(false);
-    }
+    
+    PG_RETURN_BOOL(false);
 }
 
 static Oid create_schema_for_graph(const Name graph_name)

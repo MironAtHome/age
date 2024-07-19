@@ -399,7 +399,6 @@ Datum age_edge_exists(PG_FUNCTION_ARGS)
 static bool is_valid_label(char* label_name, char* graph_name, char label_type)
 {
     Oid graph_oid;
-    Oid label_oid;
     label_cache_data* cache_data;
     
     if (!is_valid_graph_name(graph_name))
@@ -418,7 +417,7 @@ static bool is_valid_label(char* label_name, char* graph_name, char label_type)
         return false;
     }
 
-    if (!OidIsValid(label_oid = get_label_id(label_name, graph_oid)))
+    if (!OidIsValid(get_label_id(label_name, graph_oid)))
     {
         return false;
     }
