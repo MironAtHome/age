@@ -17,7 +17,7 @@
  * under the License.
  */
 
-#include "port/win32postgres.h"
+#include "postgres.h"
 
 #include "catalog/pg_collation_d.h"
 #include "utils/builtins.h"
