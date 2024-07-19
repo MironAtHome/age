@@ -138,6 +138,7 @@ bool is_numeric_result(agtype_value *lhs, agtype_value *rhs)
     {
         return true;
     }
+
     return false;
 }
 

@@ -52,9 +52,9 @@ CREATE OPERATOR ->> (
 );
 
 CREATE FUNCTION ag_catalog.agtype_object_field_agtype(agtype, agtype)
-RETURNS agtype
-LANGUAGE c
-IMMUTABLE
+    RETURNS agtype
+    LANGUAGE c
+    IMMUTABLE
 RETURNS NULL ON NULL INPUT
 PARALLEL SAFE
 AS 'MODULE_PATHNAME';
@@ -67,9 +67,9 @@ CREATE OPERATOR -> (
 );
 
 CREATE FUNCTION ag_catalog.agtype_object_field_text_agtype(agtype, agtype)
-RETURNS text
-LANGUAGE c
-IMMUTABLE
+    RETURNS text
+    LANGUAGE c
+    IMMUTABLE
 RETURNS NULL ON NULL INPUT
 PARALLEL SAFE
 AS 'MODULE_PATHNAME';

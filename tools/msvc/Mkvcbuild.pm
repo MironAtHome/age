@@ -133,7 +133,6 @@ sub mkvcbuild
 				$c_file_content =~ s/Datum age\_edge\_exists\(PG_FUNCTION_ARGS\)/PGMODULEEXPORT Datum age_edge_exists(PG_FUNCTION_ARGS)/ig;
 				$file_modified = 1;
 			}	
-
 		}
 
 		if ($c_file eq "graph_commands.c") {

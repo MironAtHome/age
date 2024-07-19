@@ -38,8 +38,6 @@
 #include "catalog/ag_graph.h"
 #include "utils/ag_cache.h"
 
-static Oid get_graph_namespace(const char *graph_name);
-
 /* INSERT INTO ag_catalog.ag_graph VALUES (graph_name, nsp_id) */
 void insert_graph(const Name graph_name, const Oid nsp_id)
 {
@@ -160,27 +158,30 @@ Oid get_graph_oid(const char *graph_name)
     {
         return cache_data->oid;
     }
-    else
-    {
-        return InvalidOid;
-    }
+
+    return InvalidOid;
 }
 
-static Oid get_graph_namespace(const char *graph_name)
+Oid get_graph_namespace(const char *graph_name)
 {
     graph_cache_data *cache_data;
 
     cache_data = search_graph_name_cache(graph_name);
-    if (!cache_data)
+    if (cache_data)
     {
-        ereport(ERROR, (errcode(ERRCODE_UNDEFINED_SCHEMA),
-                        errmsg("graph \"%s\" does not exist", graph_name)));
+        return cache_data->namespace;
     }
 
-    return cache_data->namespace;
+    return InvalidOid;
 }
 
 char *get_graph_namespace_name(const char *graph_name)
 {
-    return get_namespace_name(get_graph_namespace(graph_name));
+    Oid nsp_oid;
+    if (!OidIsValid(nsp_oid = get_graph_namespace(graph_name)))
+    {
+        ereport(ERROR, (errcode(ERRCODE_UNDEFINED_OBJECT),
+            errmsg("graph \"%s\" namespace does not exist", graph_name)));
+    }
+    return get_namespace_name(nsp_oid);
 }
