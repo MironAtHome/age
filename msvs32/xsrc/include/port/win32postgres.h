@@ -15,6 +15,13 @@
  * a module. They also provide PGMODULEEXPORT for exporting functions
  * in user DLLs.
  */
+#ifdef CHAR
+#undef CHAR
+#endif
+
+#ifdef STRING
+#undef STRING
+#endif
 
 #ifdef DECIMAL
 #undef DECIMAL

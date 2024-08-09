@@ -6860,7 +6860,7 @@ Datum age_tostring(PG_FUNCTION_ARGS)
 
 /*
  * Helper function to take any valid type and convert it to an agtype string.
- * Returns NULL for NULL output.
+ * Returns NULL for NULL input.
  */
 static agtype_value *tostring_helper(Datum arg, Oid type, char *msghdr)
 {

@@ -35,7 +35,7 @@
 
 #define MAX_GRAPH_NAME_LEN 63
 #define MIN_GRAPH_NAME_LEN 3
-#define MAX_LABEL_NAME_LEN 65535
+#define MAX_LABEL_NAME_LEN NAMEDATALEN -1
 #define MIN_LABEL_NAME_LEN 1
 
 int is_valid_graph_name(const char *graph_name);
